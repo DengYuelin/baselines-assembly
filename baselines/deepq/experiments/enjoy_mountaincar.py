@@ -6,6 +6,8 @@ from baselines.common import models
 
 def main():
     env = gym.make("MountainCar-v0")
+    print(env.observation_space)
+    print(env.action_space)
     act = deepq.learn(
         env,
         network=models.mlp(num_layers=1, num_hidden=64),

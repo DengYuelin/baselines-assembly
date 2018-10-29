@@ -194,8 +194,10 @@ def build_act(make_obs_ph, q_func, num_actions, scope="deepq", reuse=None):
                          outputs=output_actions,
                          givens={update_eps_ph: -1.0, stochastic_ph: True},
                          updates=[update_eps_expr])
+
         def act(ob, stochastic=True, update_eps=-1):
             return _act(ob, stochastic, update_eps)
+
         return act
 
 
@@ -255,6 +257,7 @@ def build_act_with_param_noise(make_obs_ph, q_func, num_actions, scope="deepq", 
         # We have to wrap this code into a function due to the way tf.cond() works. See
         # https://stackoverflow.com/questions/37063952/confused-by-the-behavior-of-tf-cond for
         # a more detailed discussion.
+
         def perturb_vars(original_scope, perturbed_scope):
             all_vars = scope_vars(absolute_scope_name(original_scope))
             all_perturbed_vars = scope_vars(absolute_scope_name(perturbed_scope))
@@ -274,10 +277,12 @@ def build_act_with_param_noise(make_obs_ph, q_func, num_actions, scope="deepq", 
         # Set up functionality to re-compute `param_noise_scale`. This perturbs yet another copy
         # of the network and measures the effect of that perturbation in action space. If the perturbation
         # is too big, reduce scale of perturbation, otherwise increase.
+
         q_values_adaptive = q_func(observations_ph.get(), num_actions, scope="adaptive_q_func")
         perturb_for_adaption = perturb_vars(original_scope="q_func", perturbed_scope="adaptive_q_func")
         kl = tf.reduce_sum(tf.nn.softmax(q_values) * (tf.log(tf.nn.softmax(q_values)) - tf.log(tf.nn.softmax(q_values_adaptive))), axis=-1)
         mean_kl = tf.reduce_mean(kl)
+
         def update_scale():
             with tf.control_dependencies([perturb_for_adaption]):
                 update_scale_expr = tf.cond(mean_kl < param_noise_threshold,
@@ -309,8 +314,10 @@ def build_act_with_param_noise(make_obs_ph, q_func, num_actions, scope="deepq", 
                          outputs=output_actions,
                          givens={update_eps_ph: -1.0, stochastic_ph: True, reset_ph: False, update_param_noise_threshold_ph: False, update_param_noise_scale_ph: False},
                          updates=updates)
+
         def act(ob, reset=False, update_param_noise_threshold=False, update_param_noise_scale=False, stochastic=True, update_eps=-1):
             return _act(ob, stochastic, update_eps, reset, update_param_noise_threshold, update_param_noise_scale)
+
         return act
 
 
@@ -376,6 +383,7 @@ def build_train(make_obs_ph, q_func, num_actions, optimizer, grad_norm_clipping=
         act_f = build_act(make_obs_ph, q_func, num_actions, scope=scope, reuse=reuse)
 
     with tf.variable_scope(scope, reuse=reuse):
+
         # set up placeholders
         obs_t_input = make_obs_ph("obs_t")
         act_t_ph = tf.placeholder(tf.int32, [None], name="action")
@@ -402,6 +410,7 @@ def build_train(make_obs_ph, q_func, num_actions, optimizer, grad_norm_clipping=
             q_tp1_best = tf.reduce_sum(q_tp1 * tf.one_hot(q_tp1_best_using_online_net, num_actions), 1)
         else:
             q_tp1_best = tf.reduce_max(q_tp1, 1)
+
         q_tp1_best_masked = (1.0 - done_mask_ph) * q_tp1_best
 
         # compute RHS of bellman equation

@@ -5,13 +5,16 @@ from baselines.a2c.utils import conv, fc, conv_to_fc, batch_to_seq, seq_to_batch
 from baselines.common.mpi_running_mean_std import RunningMeanStd
 import tensorflow.contrib.layers as layers
 
+
 mapping = {}
+
 
 def register(name):
     def _thunk(func):
         mapping[name] = func
         return func
     return _thunk
+
 
 def nature_cnn(unscaled_images, **conv_kwargs):
     """

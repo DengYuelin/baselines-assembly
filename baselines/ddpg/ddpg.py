@@ -254,6 +254,4 @@ def learn(network, env,
             if eval_env and hasattr(eval_env, 'get_state'):
                 with open(os.path.join(logdir, 'eval_env_state.pkl'), 'wb') as f:
                     pickle.dump(eval_env.get_state(), f)
-
-
     return agent

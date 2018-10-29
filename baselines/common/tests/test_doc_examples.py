@@ -40,7 +40,6 @@ def test_lstm_example():
             if done:
                 break
 
-
         assert step_counter > 5
 
 

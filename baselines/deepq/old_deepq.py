@@ -5,7 +5,6 @@ import tensorflow as tf
 import zipfile
 import cloudpickle
 import numpy as np
-import copy as cp
 
 import baselines.common.tf_util as U
 from baselines.common.tf_util import load_variables, save_variables
@@ -98,19 +97,17 @@ def learn(env,
           seed=None,
           lr=5e-4,
           total_timesteps=100000,
-          total_episodes=100,
-          total_steps=50,
-          buffer_size=5000,
+          buffer_size=50000,
           exploration_fraction=0.1,
           exploration_final_eps=0.02,
           train_freq=1,
           batch_size=32,
-          print_freq=10,
-          checkpoint_freq=100,
+          print_freq=100,
+          checkpoint_freq=10000,
           checkpoint_path=None,
           learning_starts=1000,
           gamma=1.0,
-          target_network_update_freq=10,
+          target_network_update_freq=500,
           prioritized_replay=False,
           prioritized_replay_alpha=0.6,
           prioritized_replay_beta0=0.4,
@@ -243,6 +240,8 @@ def learn(env,
 
     episode_rewards = [0.0]
     saved_mean_reward = None
+    obs = env.reset()
+    reset = True
 
     with tempfile.TemporaryDirectory() as td:
         td = checkpoint_path or td
@@ -258,97 +257,78 @@ def learn(env,
             load_variables(load_path)
             logger.log('Loaded model from {}'.format(load_path))
 
-        t = 0
-        for i in range(total_episodes):
-            obs, _ = env.reset()
-            episode_reward = 0.
-            reset = True
-            logger.info("================== The {} episode start !!! ===================".format(i))
-            for j in range(total_steps):
-                if callback is not None:
-                    if callback(locals(), globals()):
-                        break
+        for t in range(total_timesteps):
+            if callback is not None:
+                if callback(locals(), globals()):
+                    break
 
-                # Take action and update exploration to the newest value
-                kwargs = {}
-                if not param_noise:
-                    update_eps = exploration.value(t)
-                    update_param_noise_threshold = 0.
+            # Take action and update exploration to the newest value
+            kwargs = {}
+            if not param_noise:
+                update_eps = exploration.value(t)
+                update_param_noise_threshold = 0.
+            else:
+                update_eps = 0.
+                # Compute the threshold such that the KL divergence between perturbed and non-perturbed
+                # policy is comparable to eps-greedy exploration with eps = exploration.value(t).
+                # See Appendix C.1 in Parameter Space Noise for Exploration, Plappert et al., 2017
+                # for detailed explanation.
+                update_param_noise_threshold = -np.log(1. - exploration.value(t) + exploration.value(t) / float(env.action_space.n))
+                kwargs['reset'] = reset
+                kwargs['update_param_noise_threshold'] = update_param_noise_threshold
+                kwargs['update_param_noise_scale'] = True
+            action = act(np.array(obs)[None], update_eps=update_eps, **kwargs)[0]
+            env_action = action
+            reset = False
+
+            # move to next step
+            new_obs, rew, done, _ = env.step(env_action)
+
+            # Store transition in the replay buffer.
+            replay_buffer.add(obs, action, rew, new_obs, float(done))
+            obs = new_obs
+
+            episode_rewards[-1] += rew
+            if done:
+                obs = env.reset()
+                episode_rewards.append(0.0)
+                reset = True
+
+            if t > learning_starts and t % train_freq == 0:
+                # Minimize the error in Bellman's equation on a batch sampled from replay buffer.
+                if prioritized_replay:
+                    experience = replay_buffer.sample(batch_size, beta=beta_schedule.value(t))
+                    (obses_t, actions, rewards, obses_tp1, dones, weights, batch_idxes) = experience
                 else:
-                    update_eps = 0.
-                    # Compute the threshold such that the KL divergence between perturbed and non-perturbed
-                    # policy is comparable to eps-greedy exploration with eps = exploration.value(t).
-                    # See Appendix C.1 in Parameter Space Noise for Exploration, Plappert et al., 2017
-                    # for detailed explanation.
-                    update_param_noise_threshold = -np.log(
-                        1. - exploration.value(t) + exploration.value(t) / float(env.action_space.n))
-                    kwargs['reset'] = reset
-                    kwargs['update_param_noise_threshold'] = update_param_noise_threshold
-                    kwargs['update_param_noise_scale'] = True
+                    obses_t, actions, rewards, obses_tp1, dones = replay_buffer.sample(batch_size)
+                    weights, batch_idxes = np.ones_like(rewards), None
+                td_errors = train(obses_t, actions, rewards, obses_tp1, dones, weights)
+                if prioritized_replay:
+                    new_priorities = np.abs(td_errors) + prioritized_replay_eps
+                    replay_buffer.update_priorities(batch_idxes, new_priorities)
 
-                action = act(np.array(obs)[None], update_eps=update_eps, **kwargs)[0]
-                env_action = action
+            if t > learning_starts and t % target_network_update_freq == 0:
+                # Update target network periodically.
+                update_target()
 
-                reset = False
+            mean_100ep_reward = round(np.mean(episode_rewards[-101:-1]), 1)
+            num_episodes = len(episode_rewards)
+            if done and print_freq is not None and len(episode_rewards) % print_freq == 0:
+                logger.record_tabular("steps", t)
+                logger.record_tabular("episodes", num_episodes)
+                logger.record_tabular("mean 100 episode reward", mean_100ep_reward)
+                logger.record_tabular("% time spent exploring", int(100 * exploration.value(t)))
+                logger.dump_tabular()
 
-                # move to next step
-                new_obs, rew, done, safe_or_not = env.step(env_action, j)
-
-                if safe_or_not is False:
-                    break
-
-                # Store transition in the replay buffer.
-                replay_buffer.add(obs, action, rew, new_obs, float(done))
-                obs = new_obs
-                episode_reward += rew
-
-                if done:
-                    # obs = env.reset()
-                    # reset = True
-
-                    # logger.info("================== The Search Phase has Finished!!! ===================")
-                    break
-
-                if t > learning_starts and t % train_freq == 0:
-                    # Minimize the error in Bellman's equation on a batch sampled from replay buffer.
-                    if prioritized_replay:
-                        experience = replay_buffer.sample(batch_size, beta=beta_schedule.value(t))
-                        (obses_t, actions, rewards, obses_tp1, dones, weights, batch_idxes) = experience
-                    else:
-                        obses_t, actions, rewards, obses_tp1, dones = replay_buffer.sample(batch_size)
-                        weights, batch_idxes = np.ones_like(rewards), None
-                    td_errors = train(obses_t, actions, rewards, obses_tp1, dones, weights)
-                    if prioritized_replay:
-                        new_priorities = np.abs(td_errors) + prioritized_replay_eps
-                        replay_buffer.update_priorities(batch_idxes, new_priorities)
-
-                if t > learning_starts and t % target_network_update_freq == 0:
-                    # Update target network periodically.
-                    update_target()
-
-                mean_100ep_reward = round(np.mean(episode_rewards[-10:-1]), 1)
-                num_episodes = len(episode_rewards)
-                if done and print_freq is not None and len(episode_rewards) % print_freq == 0:
-                    logger.record_tabular("steps", t)
-                    logger.record_tabular("episodes", num_episodes)
-                    logger.record_tabular("mean 100 episode reward", mean_100ep_reward)
-                    logger.record_tabular("% time spent exploring", int(100 * exploration.value(t)))
-                    logger.dump_tabular()
-
-                if (checkpoint_freq is not None and t > learning_starts and
-                        num_episodes > 100 and t % checkpoint_freq == 0):
-                    if saved_mean_reward is None or mean_100ep_reward > saved_mean_reward:
-                        if print_freq is not None:
-                            logger.log("Saving model due to mean reward increase: {} -> {}".format(
-                                saved_mean_reward, mean_100ep_reward))
-                        save_variables(model_file)
-                        model_saved = True
-                        saved_mean_reward = mean_100ep_reward
-                t += 1
-
-            episode_rewards.append(cp.deepcopy(episode_reward))
-            np.save('../data/episode_rewards', episode_rewards)
-
+            if (checkpoint_freq is not None and t > learning_starts and
+                    num_episodes > 100 and t % checkpoint_freq == 0):
+                if saved_mean_reward is None or mean_100ep_reward > saved_mean_reward:
+                    if print_freq is not None:
+                        logger.log("Saving model due to mean reward increase: {} -> {}".format(
+                                   saved_mean_reward, mean_100ep_reward))
+                    save_variables(model_file)
+                    model_saved = True
+                    saved_mean_reward = mean_100ep_reward
         if model_saved:
             if print_freq is not None:
                 logger.log("Restored model with mean reward: {}".format(saved_mean_reward))
