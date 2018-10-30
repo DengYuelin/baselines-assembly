@@ -45,8 +45,11 @@ class Robot_Control(object):
                               [0, 0, 0, 1]])
 
         # target position and euler
-        self.target_pos = np.array([539.89459, -39.68952, 190.5599])
+        self.target_pos = np.array([539.89459, -39.68952, 191.5599])
         self.target_euler = np.array([179.88302, 1.29705, 1.01166])
+        # for prediction
+        # self.target_pos = np.array([539.89459, -39.68952, 190.5599])
+        # self.target_euler = np.array([179.88302, 1.29705, 1.01166])
 
         # final position and euler
         self.final_pos = np.array([539.88427, -38.68679, 190.03184])

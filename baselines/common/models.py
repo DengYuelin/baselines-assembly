@@ -133,7 +133,7 @@ def lstm(nlstm=128, layer_norm=False):
         h = seq_to_batch(h5)
         initial_state = np.zeros(S.shape.as_list(), dtype=float)
 
-        return h, {'S':S, 'M':M, 'state':snew, 'initial_state':initial_state}
+        return h, {'S': S, 'M': M, 'state': snew, 'initial_state': initial_state}
 
     return network_fn
 

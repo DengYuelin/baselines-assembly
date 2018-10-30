@@ -116,4 +116,4 @@ if __name__ == "__main__":
     print(np.min(state, axis=0))
     # plot('./search_state.npy')
     # plot('./search_force.npy')
-    plot_reward('./episode_rewards.npy')
+    plot_reward('./episode_rewards_2.npy')

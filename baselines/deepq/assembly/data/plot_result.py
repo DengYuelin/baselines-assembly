@@ -164,7 +164,7 @@ if __name__ == "__main__":
     # print(np.min(state, axis=0))
     # plot('./search_state.npy')
     # plot('./search_force.npy')
-    # plot_reward('./episode_rewards.npy')
+    plot_reward('./episode_rewards.npy')
 
     # data = np.load('prediction_result.npy')
     # print(data[:, 2])
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     # plt.legend(YLABEL)
     # plt.show()
 
-    plot_true_data()
+    # plot_true_data()
 
     # past_cumulants = collections.deque([0], maxlen=11)
     # past_cumulants.append(10)

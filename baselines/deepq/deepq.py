@@ -109,6 +109,7 @@ def learn(env,
           checkpoint_freq=100,
           checkpoint_path=None,
           learning_starts=1000,
+          learning_times=10,
           gamma=1.0,
           target_network_update_freq=10,
           prioritized_replay=False,
@@ -287,6 +288,7 @@ def learn(env,
                     kwargs['update_param_noise_scale'] = True
 
                 action = act(np.array(obs)[None], update_eps=update_eps, **kwargs)[0]
+
                 env_action = action
 
                 reset = False
@@ -310,17 +312,19 @@ def learn(env,
                     break
 
                 if t > learning_starts and t % train_freq == 0:
+
                     # Minimize the error in Bellman's equation on a batch sampled from replay buffer.
-                    if prioritized_replay:
-                        experience = replay_buffer.sample(batch_size, beta=beta_schedule.value(t))
-                        (obses_t, actions, rewards, obses_tp1, dones, weights, batch_idxes) = experience
-                    else:
-                        obses_t, actions, rewards, obses_tp1, dones = replay_buffer.sample(batch_size)
-                        weights, batch_idxes = np.ones_like(rewards), None
-                    td_errors = train(obses_t, actions, rewards, obses_tp1, dones, weights)
-                    if prioritized_replay:
-                        new_priorities = np.abs(td_errors) + prioritized_replay_eps
-                        replay_buffer.update_priorities(batch_idxes, new_priorities)
+                    for learning_term in range(learning_times):
+                        if prioritized_replay:
+                            experience = replay_buffer.sample(batch_size, beta=beta_schedule.value(t))
+                            (obses_t, actions, rewards, obses_tp1, dones, weights, batch_idxes) = experience
+                        else:
+                            obses_t, actions, rewards, obses_tp1, dones = replay_buffer.sample(batch_size)
+                            weights, batch_idxes = np.ones_like(rewards), None
+                        td_errors = train(obses_t, actions, rewards, obses_tp1, dones, weights)
+                        if prioritized_replay:
+                            new_priorities = np.abs(td_errors) + prioritized_replay_eps
+                            replay_buffer.update_priorities(batch_idxes, new_priorities)
 
                 if t > learning_starts and t % target_network_update_freq == 0:
                     # Update target network periodically.
@@ -347,7 +351,8 @@ def learn(env,
                 t += 1
 
             episode_rewards.append(cp.deepcopy(episode_reward))
-            np.save('../data/episode_rewards', episode_rewards)
+            np.save('../data/episode_rewards_2', episode_rewards)
+            replay_buffer.save_sample('../data/sample_data')
 
         if model_saved:
             if print_freq is not None:

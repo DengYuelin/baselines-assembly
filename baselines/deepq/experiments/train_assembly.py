@@ -17,19 +17,21 @@ def main():
     act = deepq.learn(
         env,
         network=models.mlp(num_hidden=64, num_layers=1),
-        lr=1e-2,
-        total_timesteps=500,
-        total_episodes=30,
+        lr=1e-3,
+        total_timesteps=2500,
+        total_episodes=50,
         total_steps=50,
-        target_network_update_freq=10,
+        target_network_update_freq=20,
         buffer_size=32,
         learning_starts=32,
-        exploration_fraction=0.1,
+        learning_times=10,
+        exploration_fraction=0.2,
         exploration_final_eps=0.01,
         print_freq=10,
         param_noise=True,
-        load_path='assembly_model.pkl'
+        load_path='assembly_model_parameter.pkl'
     )
+    # load_path = 'assembly_model.pkl'
     print("Saving model to assembly_model.pkl")
     act.save("assembly_model_parameter.pkl")
 

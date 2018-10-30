@@ -602,7 +602,6 @@ class env_search_control(object):
                                              [0, 0, -40, 0, 0, 0],
                                              [0, 0, -40, 0, 0, 0],
                                              [0, 0, -40, 0, 0, 0],
-                                             [0, 0, -40, 0, 0, 0],
                                              [0, 0, -40, 0, 0, 0]])
 
         """The force and moment"""
@@ -665,6 +664,8 @@ class env_search_control(object):
         return self.get_obs(self.state), done
 
     def step(self, action, step_num):
+
+        """choose one action from the different actions vector"""
         done = False
         force_desired = self.desired_force_moment[action, :]
         self.reward = -1
@@ -690,6 +691,8 @@ class env_search_control(object):
 
         """Get the euler"""
         setEuler = self.kr * force_error[3:6]
+
+        # set the velocity of robot
         setVel = max(self.kv * abs(sum(force_error[:3])), 0.5)
 
         """Judge the force&moment is safe for object"""
