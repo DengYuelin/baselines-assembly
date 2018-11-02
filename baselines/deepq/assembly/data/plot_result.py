@@ -109,22 +109,21 @@ def plot_raw_data(path_1):
 
 def plot_continuous_data(path):
     raw_data = np.load(path)
-    plt.figure(figsize=(20, 15), dpi=100)
+    plt.figure(figsize=(20, 15))
     plt.title('Episode Reward')
     plt.tight_layout(pad=3, w_pad=0.5, h_pad=1.0)
     plt.subplots_adjust(left=0.065, bottom=0.1, right=0.995, top=0.9, wspace=0.2, hspace=0.2)
-    plt.title("True Data")
     data = np.zeros((len(raw_data), 12))
     for j in range(len(raw_data)):
         data[j] = raw_data[j, 0]
     print(data[:, 0])
     for j in range(6):
         plt.subplot(2, 3, j + 1)
-        plt.plot(data[:, j])
-        plt.ylabel(YLABEL[j], fontsize=15)
-        plt.xlabel('steps', fontsize=15)
-        plt.xticks(fontsize=15)
-        plt.yticks(fontsize=15)
+        plt.plot(data[:200, j])
+        plt.ylabel(YLABEL[j], fontsize=18)
+        plt.xlabel('steps', fontsize=18)
+        plt.xticks(fontsize=18)
+        plt.yticks(fontsize=18)
     plt.savefig('raw_data.jpg')
     plt.show()
 
@@ -164,11 +163,11 @@ if __name__ == "__main__":
     # print(np.min(state, axis=0))
     # plot('./search_state.npy')
     # plot('./search_force.npy')
-    plot_reward('./episode_rewards.npy')
+    # plot_reward('./episode_rewards.npy')
 
-    # data = np.load('prediction_result.npy')
+    data = np.load('prediction_result.npy')
     # print(data[:, 2])
-    # plot_continuous_data('prediction_result_1.npy')
+    plot_continuous_data('prediction_result_1.npy')
 
     # f = open('../data/learning_result', 'rb')
     # y = pickle.load(f)
