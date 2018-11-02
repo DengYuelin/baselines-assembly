@@ -110,9 +110,9 @@ def learn(env,
           checkpoint_path=None,
           learning_starts=1000,
           learning_times=10,
-          gamma=1.0,
+          gamma=0.99,
           target_network_update_freq=10,
-          prioritized_replay=False,
+          prioritized_replay=True,
           prioritized_replay_alpha=0.6,
           prioritized_replay_beta0=0.4,
           prioritized_replay_beta_iters=None,
@@ -351,11 +351,12 @@ def learn(env,
                 t += 1
 
             episode_rewards.append(cp.deepcopy(episode_reward))
-            np.save('../data/episode_rewards_2', episode_rewards)
-            replay_buffer.save_sample('../data/sample_data')
+            np.save('../data/episode_rewards_none_fuzzy_noise', episode_rewards)
+            replay_buffer.save_sample('../data/sample_data_none_fuzzy_noise')
 
         if model_saved:
             if print_freq is not None:
                 logger.log("Restored model with mean reward: {}".format(saved_mean_reward))
             load_variables(model_file)
+
     return act

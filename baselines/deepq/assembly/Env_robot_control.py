@@ -18,6 +18,7 @@ import logging
 from .Connect_Finall import Robot_Control
 import pandas as pd
 import copy as cp
+from .fuzzy_control import fuzzy_control
 
 
 COLORS = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'purple', 'pink',
@@ -588,8 +589,9 @@ class env_search_control(object):
         self.next_state = np.zeros(self.observation_dim)
         self.action = np.zeros(self.action_dim)
         self.reward = 1.
-        self.add_noise = False
+        self.add_noise = True
         self.pull_terminal = False
+        self.fuzzy_control = False
         self.step_max = 50
         self.step_max_pos = 15
 
@@ -626,6 +628,10 @@ class env_search_control(object):
         self.low = np.array([-40, -40, -40, -5, -5, -5, 538, -42, 192, -5, -5, -5])
         self.action_space = spaces.Discrete(5)
         self.observation_space = spaces.Box(self.low, self.high)
+
+        """build a fuzzy control system"""
+        self.fc = fuzzy_control(low_output=np.array([0., 0., 0., 0., 0., 0.]),
+                                high_output=np.array([0.022, 0.022, 0.015, 0.015, 0.015, 0.015]))
 
     def reset(self):
 
@@ -668,12 +674,16 @@ class env_search_control(object):
         """choose one action from the different actions vector"""
         done = False
         force_desired = self.desired_force_moment[action, :]
-        self.reward = -1
+        self.reward = -0.1
         force = self.state[:6]
         state = self.state[6:]
 
         force_error = force_desired - force
         force_error *= np.array([-1, 1, 1, -1, 1, 1])
+
+        if self.fuzzy_control:
+            self.kp = self.fc.get_output(force)[:3]
+            self.kr = self.fc.get_output(force)[3:]
 
         if step_num == 0:
             setPosition = self.kp * force_error[:3]
@@ -711,7 +721,7 @@ class env_search_control(object):
         if self.safe_or_not is False:
             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             print('Max_force_moment:', force)
-            self.reward = -10
+            self.reward = -1
             print("-------------------------------- The force is too large!!! -----------------------------")
         else:
             """Move and rotate the pegs"""

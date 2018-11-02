@@ -194,4 +194,4 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             self._max_priority = max(self._max_priority, priority)
 
     def save_sample(self, path):
-        super.add(path)
+        np.save(path, self._storage)

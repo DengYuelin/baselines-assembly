@@ -489,8 +489,8 @@ def Test_calibrate():
     Controller = Robot_Control()
 
     """Calibrate the force sensor"""
-    print('===================== Calibrate the force-moment sensor =========================')
-    done = Controller.CalibFCforce()
+    # print('===================== Calibrate the force-moment sensor =========================')
+    # done = Controller.CalibFCforce()
     # force = Controller.GetFCForce()
     # print(force)
     # print('=================================================================================')
