@@ -134,11 +134,10 @@ class fuzzy_control(object):
         for i in range(6):
             self.unsampled.append(np.linspace(self.low_input[i], self.high_input[i], 21))
 
-        # plt.figure(figsize=(20, 15), dpi=100)
-        # plt.title('Episode Reward')
-        # plt.tight_layout(pad=3, w_pad=0.5, h_pad=1.0)
-        # plt.subplots_adjust(left=0.065, bottom=0.1, right=0.995, top=0.9, wspace=0.2, hspace=0.2)
-        # plt.title("True Data")
+        plt.figure(figsize=(15, 15), dpi=100)
+        plt.title('Fuzzy Rules')
+        plt.tight_layout(pad=3, w_pad=0.5, h_pad=1.0)
+        plt.subplots_adjust(left=0.065, bottom=0.1, right=0.995, top=0.9, wspace=0.2, hspace=0.2)
 
         """kpx"""
         upsampled_x = self.unsampled[0]
@@ -154,13 +153,11 @@ class fuzzy_control(object):
                 self.sim_kpx.compute()
                 z[i, j] = self.sim_kpx.output['kpx']
 
-        """ Plot the result in pretty 3D with alpha blending"""
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot(111, projection='3d')
-
+        ax = plt.subplot(231, projection='3d')
+        # ax = fig.add_subplot(231, projection='3d')
         surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
-        plt.show()
+        ax.view_init(45, 200)
 
         """kpy"""
         upsampled_x = self.unsampled[1]
@@ -176,12 +173,11 @@ class fuzzy_control(object):
                 self.sim_kpy.compute()
                 z[i, j] = self.sim_kpy.output['kpy']
 
-        """ Plot the result in pretty 3D with alpha blending"""
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot(111, projection='3d')
-
+        ax = plt.subplot(232, projection='3d')
+        # ax = fig.add_subplot(232, projection='3d')
         surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
+        ax.view_init(20, 200)
 
         """kpz"""
         upsampled_x = self.unsampled[0]
@@ -197,15 +193,11 @@ class fuzzy_control(object):
                 self.sim_kpz.compute()
                 z[i, j] = self.sim_kpz.output['kpz']
 
-        """ Plot the result in pretty 3D with alpha blending"""
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot(111, projection='3d')
-
+        ax = plt.subplot(233, projection='3d')
+        # ax = fig.add_subplot(233, projection='3d')
         surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
-
-        ax.view_init(30, 200)
-        plt.show()
+        ax.view_init(20, 200)
 
         """krx"""
         upsampled_x = self.unsampled[1]
@@ -221,14 +213,11 @@ class fuzzy_control(object):
                 self.sim_krx.compute()
                 z[i, j] = self.sim_krx.output['krx']
 
-        """ Plot the result in pretty 3D with alpha blending"""
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot(111, projection='3d')
-
+        ax = plt.subplot(234, projection='3d')
+        # ax = fig.add_subplot(234, projection='3d')
         surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
-        ax.view_init(30, 200)
-        plt.show()
+        ax.view_init(20, 200)
 
         """kry"""
         upsampled_x = self.unsampled[1]
@@ -244,13 +233,11 @@ class fuzzy_control(object):
                 self.sim_kry.compute()
                 z[i, j] = self.sim_kry.output['kry']
 
-        """ Plot the result in pretty 3D with alpha blending"""
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot(111, projection='3d')
-
+        ax = plt.subplot(235, projection='3d')
+        # ax = fig.add_subplot(235, projection='3d')
         surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
-        plt.show()
+        ax.view_init(20, 200)
 
         """krz"""
         upsampled_x = self.unsampled[3]
@@ -265,12 +252,11 @@ class fuzzy_control(object):
                 self.sim_krz.compute()
                 z[i, j] = self.sim_krz.output['krz']
 
-        """ Plot the result in pretty 3D with alpha blending"""
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot(111, projection='3d')
-
+        ax = plt.subplot(236, projection='3d')
+        # ax = fig.add_subplot(236, projection='3d')
         surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
+        ax.view_init(20, 200)
         plt.show()
 
     def build_fuzzy_kpx(self):
