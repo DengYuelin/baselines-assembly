@@ -3,28 +3,37 @@ import time
 from collections import deque
 import pickle
 
+import gym
 from baselines.ddpg.ddpg_learner import DDPG
 from baselines.ddpg.models import Actor, Critic
 from baselines.ddpg.memory import Memory
 from baselines.ddpg.noise import AdaptiveParamNoiseSpec, NormalActionNoise, OrnsteinUhlenbeckActionNoise
+from baselines.deepq.assembly.Env_robot_control import env_search_control, env_continuous_search_control
+
 
 import baselines.common.tf_util as U
 
 from baselines import logger
 import numpy as np
 from mpi4py import MPI
+import copy as cp
 
 
-def learn(network, env,
+def learn(network,
+          env,
+          path='',
+          model_path='./model/',
+          model_name='ddpg_none_fuzzy',
+          restore=False,
           seed=None,
           total_timesteps=None,
-          nb_epochs=None, # with default settings, perform 1M steps total
+          nb_epochs=None,  # with default settings, perform 1M steps total
           nb_epoch_cycles=20,
-          nb_rollout_steps=100,
+          nb_rollout_steps=50,
           reward_scale=1.0,
           render=False,
           render_eval=False,
-          noise_type='adaptive-param_0.2',
+          noise_type=None, #'adaptive-param_0.2'
           normalize_returns=False,
           normalize_observations=True,
           critic_l2_reg=1e-2,
@@ -33,32 +42,32 @@ def learn(network, env,
           popart=False,
           gamma=0.99,
           clip_norm=None,
-          nb_train_steps=50, # per epoch cycle and MPI worker,
+          nb_train_steps=50,  # per epoch cycle and MPI worker,
           nb_eval_steps=100,
-          batch_size=64, # per MPI worker
+          batch_size=32,  # per MPI worker
           tau=0.01,
           eval_env=None,
           param_noise_adaption_interval=50,
           **network_kwargs):
 
-
     if total_timesteps is not None:
         assert nb_epochs is None
         nb_epochs = int(total_timesteps) // (nb_epoch_cycles * nb_rollout_steps)
     else:
-        nb_epochs = 500
+        nb_epochs = 1
 
     rank = MPI.COMM_WORLD.Get_rank()
-    nb_actions = env.action_space.shape[-1]
-    assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
+    nb_actions = env.action_space.n
+    # assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
 
-    memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape)
+    memory = Memory(limit=int(1e5), action_shape=env.action_space.n, observation_shape=env.observation_space.shape)
     critic = Critic(network=network, **network_kwargs)
     actor = Actor(nb_actions, network=network, **network_kwargs)
 
     action_noise = None
     param_noise = None
-    nb_actions = env.action_space.shape[-1]
+    nb_actions = env.action_space.n
+
     if noise_type is not None:
         for current_noise_type in noise_type.split(','):
             current_noise_type = current_noise_type.strip()
@@ -76,54 +85,58 @@ def learn(network, env,
             else:
                 raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
 
-    max_action = env.action_space.high
+    max_action = env.max_action
     logger.info('scaling actions by {} before executing in env'.format(max_action))
 
-    agent = DDPG(actor, critic, memory, env.observation_space.shape, env.action_space.shape,
+    agent = DDPG(actor, critic, memory, env.observation_space.shape, env.action_space.n,
         gamma=gamma, tau=tau, normalize_returns=normalize_returns, normalize_observations=normalize_observations,
         batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
-        actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
-        reward_scale=reward_scale)
+        actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm, reward_scale=reward_scale)
+
     logger.info('Using agent with the following configuration:')
     logger.info(str(agent.__dict__.items()))
 
     eval_episode_rewards_history = deque(maxlen=100)
     episode_rewards_history = deque(maxlen=100)
     sess = U.get_session()
-    # Prepare everything.
-    agent.initialize(sess)
-    sess.graph.finalize()
+
+    if restore:
+        agent.restore(sess, model_path, model_name)
+    else:
+        # Prepare everything.
+        agent.initialize(sess)
+        sess.graph.finalize()
+
+    # if eval_env is not None:
+    #     eval_obs = eval_env.reset()
+    # nenvs = obs.shape[0]
+    # episode_reward = np.zeros(nenvs, dtype=np.float32) #vector
+    # episode_step = np.zeros(nenvs, dtype=int) # vector
 
     agent.reset()
-
-    obs = env.reset()
-    if eval_env is not None:
-        eval_obs = eval_env.reset()
-    nenvs = obs.shape[0]
-
-    episode_reward = np.zeros(nenvs, dtype = np.float32) #vector
-    episode_step = np.zeros(nenvs, dtype = int) # vector
-    episodes = 0 #scalar
-    t = 0 # scalar
-
+    episodes = 0
+    t = 0
     epoch = 0
-
-
 
     start_time = time.time()
 
     epoch_episode_rewards = []
     epoch_episode_steps = []
     epoch_actions = []
+    epoch_episode_states = []
     epoch_qs = []
     epoch_episodes = 0
     for epoch in range(nb_epochs):
         for cycle in range(nb_epoch_cycles):
             # Perform rollouts.
-            if nenvs > 1:
-                # if simulating multiple envs in parallel, impossible to reset agent at the end of the episode in each
-                # of the environments, so resetting here instead
-                agent.reset()
+            # if nenvs > 1:
+            #     # if simulating multiple envs in parallel, impossible to reset agent at the end of the episode in each
+            #     # of the environments, so resetting here instead
+            #     agent.reset()
+            obs, done = env.reset()
+            episode_reward = 0.
+            episode_step = 0
+            episode_states = []
             for t_rollout in range(nb_rollout_steps):
                 # Predict next action.
                 action, q, _, _ = agent.step(obs, apply_noise=True, compute_Q=True)
@@ -133,36 +146,52 @@ def learn(network, env,
                     env.render()
 
                 # max_action is of dimension A, whereas action is dimension (nenvs, A) - the multiplication gets broadcasted to the batch
-                new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
+                new_obs, r, done, info = env.step(max_action * action, t_rollout)
+
+                # tion in env (as far as DDPG is concerned, every action is in [-1, 1])
                 # note these outputs are batched from vecenv
 
                 t += 1
                 if rank == 0 and render:
                     env.render()
+
                 episode_reward += r
                 episode_step += 1
+                episode_states.append(cp.deepcopy(obs))
 
                 # Book-keeping.
                 epoch_actions.append(action)
                 epoch_qs.append(q)
-                agent.store_transition(obs, action, r, new_obs, done) #the batched data will be unrolled in memory.py's append.
+                agent.store_transition(obs, action, r, new_obs, done)
 
+                #the batched data will be unrolled in memory.py's append.
                 obs = new_obs
 
-                for d in range(len(done)):
-                    if done[d]:
-                        # Episode done.
-                        epoch_episode_rewards.append(episode_reward[d])
-                        episode_rewards_history.append(episode_reward[d])
-                        epoch_episode_steps.append(episode_step[d])
-                        episode_reward[d] = 0.
-                        episode_step[d] = 0
-                        epoch_episodes += 1
-                        episodes += 1
-                        if nenvs == 1:
-                            agent.reset()
-
-
+                # for d in range(len(done)):
+                #     if done[d]:
+                #         # Episode done.
+                #         epoch_episode_rewards.append(episode_reward[d])
+                #         episode_rewards_history.append(episode_reward[d])
+                #         epoch_episode_steps.append(episode_step[d])
+                #         episode_reward[d] = 0.
+                #         episode_step[d] = 0
+                #         epoch_episodes += 1
+                #         episodes += 1
+                #         if nenvs == 1:
+                #             agent.reset()
+                if done:
+                    # Episode done.
+                    epoch_episode_rewards.append(episode_reward)
+                    episode_rewards_history.append(episode_reward)
+                    epoch_episode_steps.append(episode_step)
+                    epoch_episode_states.append(cp.deepcopy(episode_states))
+                    # episode_reward = 0.
+                    # episode_step = 0.
+                    epoch_episodes += 1
+                    episodes += 1
+                    # if nenvs == 1:
+                    #     agent.reset()
+                    break
 
             # Train.
             epoch_actor_losses = []
@@ -173,7 +202,6 @@ def learn(network, env,
                 if memory.nb_entries >= batch_size and t_train % param_noise_adaption_interval == 0:
                     distance = agent.adapt_param_noise()
                     epoch_adaptive_distances.append(distance)
-
                 cl, al = agent.train()
                 epoch_critic_losses.append(cl)
                 epoch_actor_losses.append(al)
@@ -184,7 +212,7 @@ def learn(network, env,
             eval_qs = []
             if eval_env is not None:
                 nenvs_eval = eval_obs.shape[0]
-                eval_episode_reward = np.zeros(nenvs_eval, dtype = np.float32)
+                eval_episode_reward = np.zeros(nenvs_eval, dtype=np.float32)
                 for t_rollout in range(nb_eval_steps):
                     eval_action, eval_q, _, _ = agent.step(eval_obs, apply_noise=False, compute_Q=True)
                     eval_obs, eval_r, eval_done, eval_info = eval_env.step(max_action * eval_action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
@@ -200,6 +228,7 @@ def learn(network, env,
                             eval_episode_reward[d] = 0.0
 
         mpi_size = MPI.COMM_WORLD.Get_size()
+
         # Log stats.
         # XXX shouldn't call np.mean on variable length lists
         duration = time.time() - start_time
@@ -218,12 +247,14 @@ def learn(network, env,
         combined_stats['total/episodes'] = episodes
         combined_stats['rollout/episodes'] = epoch_episodes
         combined_stats['rollout/actions_std'] = np.std(epoch_actions)
+
         # Evaluation statistics.
         if eval_env is not None:
             combined_stats['eval/return'] = eval_episode_rewards
             combined_stats['eval/return_history'] = np.mean(eval_episode_rewards_history)
             combined_stats['eval/Q'] = eval_qs
             combined_stats['eval/episodes'] = len(eval_episode_rewards)
+
         def as_scalar(x):
             if isinstance(x, np.ndarray):
                 assert x.size == 1
@@ -245,13 +276,21 @@ def learn(network, env,
 
         if rank == 0:
             logger.dump_tabular()
-        logger.info('')
-        logdir = logger.get_dir()
-        if rank == 0 and logdir:
-            if hasattr(env, 'get_state'):
-                with open(os.path.join(logdir, 'env_state.pkl'), 'wb') as f:
-                    pickle.dump(env.get_state(), f)
-            if eval_env and hasattr(eval_env, 'get_state'):
-                with open(os.path.join(logdir, 'eval_env_state.pkl'), 'wb') as f:
-                    pickle.dump(eval_env.get_state(), f)
-    return agent
+
+        # save data
+        np.save(path+'train_reward_none_fuzzy', epoch_episode_rewards)
+        np.save(path+'train_step_none_fuzzy', epoch_episode_steps)
+        np.save(path+'train_states_none_fuzzy', epoch_episode_states)
+
+        # agent save
+        agent.store(model_path + model_name)
+
+
+if __name__ == '__main__':
+
+    # env = env_search_control()
+    env = env_continuous_search_control(fuzzy=False)
+
+    # env = gym.make("HalfCheetah-v2")
+    path = './data/'
+    learn(network='mlp', env=env, path=path)

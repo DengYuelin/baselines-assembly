@@ -28,12 +28,14 @@ def main():
         exploration_fraction=0.2,
         exploration_final_eps=0.01,
         print_freq=10,
-        param_noise=True
+        param_noise=True,
+        save_path='_fuzzy_noise_final',
+        load_path='assembly_model_fuzzy_final.pkl'
     )
     # load_path = 'assembly_model_fuzzy.pkl'
     # load_path = 'assembly_model.pkl'
-    print("Saving model to assembly_none_fuzzy_noise.pkl")
-    act.save("assembly_model_none_fuzzy_noise.pkl")
+    # print("Saving model to assembly_fuzzy_noise.pkl")
+    act.save("assembly_model_fuzzy_final.pkl")
 
 
 if __name__ == '__main__':

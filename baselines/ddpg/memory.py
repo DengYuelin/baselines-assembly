@@ -42,9 +42,8 @@ def array_min2d(x):
 class Memory(object):
     def __init__(self, limit, action_shape, observation_shape):
         self.limit = limit
-
         self.observations0 = RingBuffer(limit, shape=observation_shape)
-        self.actions = RingBuffer(limit, shape=action_shape)
+        self.actions = RingBuffer(limit, shape=(action_shape,))
         self.rewards = RingBuffer(limit, shape=(1,))
         self.terminals1 = RingBuffer(limit, shape=(1,))
         self.observations1 = RingBuffer(limit, shape=observation_shape)
@@ -71,7 +70,6 @@ class Memory(object):
     def append(self, obs0, action, reward, obs1, terminal1, training=True):
         if not training:
             return
-
         self.observations0.append(obs0)
         self.actions.append(action)
         self.rewards.append(reward)

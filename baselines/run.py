@@ -138,6 +138,7 @@ def get_default_network(env_type):
     else:
         return 'mlp'
 
+
 def get_alg_module(alg, submodule=None):
     submodule = submodule or alg
     try:
@@ -163,7 +164,6 @@ def get_learn_function_defaults(alg, env_type):
     return kwargs
 
 
-
 def parse_cmdline_kwargs(args):
     '''
     convert a list of '='-spaced command-line arguments to a dictionary, evaluating python objects when possible
@@ -177,7 +177,6 @@ def parse_cmdline_kwargs(args):
             return v
 
     return {k: parse(v) for k,v in parse_unknown_args(args).items()}
-
 
 
 def main():
@@ -218,6 +217,7 @@ def main():
                 obs = env.reset()
 
         env.close()
+
 
 if __name__ == '__main__':
     main()

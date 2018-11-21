@@ -71,15 +71,13 @@ class Robot_Control(object):
 
     """move line to the target"""
     def MoveToolTo(self, position, euler, vel):
-        # for i in range(3):
-        #     if abs(position[i])< 0.001:
-        #         position[i] = 0.
-        #     if abs(euler)
         # change euler to quter
         Q = self.EulerToQuternion(euler)
+
         # send the code head
         swrite = '#FileHead@'
         self.s.send(swrite.encode())
+
         Filecounter = 0
 
         # The send module
@@ -102,7 +100,6 @@ class Robot_Control(object):
         swrite = '#FileData ' + str(Filecounter) + ' ' + chr(9) + '[0,0,0,0],[9E9,9E9,9E9,9E9,9E9,0]];' + '@'
         self.s.send(swrite.encode())
 
-        # The start of program
         Filecounter += 1
         swrite = '#FileData ' + str(Filecounter) + ' ' + 'PROC Path_10()' + chr(10) + '@'
         self.s.send(swrite.encode())
@@ -157,15 +154,12 @@ class Robot_Control(object):
         time_out = 0
         while recvbuf.find('Receive Over!') == -1 and time_out < 20:
             recvbuf = self.s.recv(2048).decode()
-            time_out +=1
-            time.sleep(0.1)
-
+            time.sleep(0.01)
+            time_out += 1
         if time_out < 20:
-            result = True
+            pass
         else:
-            result = False
-            print('Receive Fail!\n')
-            return result
+            print('Receive Fail for Time Out!\n')
 
         self.s.send('#WorkStart@'.encode())
 
@@ -175,13 +169,12 @@ class Robot_Control(object):
         while recvbuf.find('MotionFinish') == -1 and time_out < 100:
             recvbuf = self.s.recv(2048).decode()
             time_out += 1
-            time.sleep(0.1)
+            time.sleep(0.01)
 
         if time_out < 20:
-            result = True
+            pass
         else:
-            result = False
-            print('Move Tool Fail!\n')
+            print('Move Tool Fail for Time Out!\n')
 
     """move joint to the target"""
     def MoveJointTo(self, position, vel):
@@ -251,17 +244,15 @@ class Robot_Control(object):
         # Receive the message of the robot and send the instruct to control the robot
         recvbuf = ''
         time_out = 0
-        while recvbuf.find('Receive Over!') == -1 and time_out < 20:
+        while recvbuf.find('Receive Over Time Out!') == -1 and time_out < 20:
             recvbuf = self.s.recv()
             time_out += 1
-            time.sleep(0.1)
+            time.sleep(0.01)
 
         if time_out < 20:
-            result = True
+            pass
         else:
-            result = False
-            print('Receive Fail!\n')
-            return result
+            print('Receive Fail Time Out!\n')
 
         self.s.send('#WorkStart@')
 
@@ -271,21 +262,22 @@ class Robot_Control(object):
         while recvbuf.find('MotionFinish') == -1 and time_out < 100:
             recvbuf = self.s.recv(2048).decode()
             time_out += 1
-            time.sleep(0.1)
+            time.sleep(0.01)
 
         if time_out < 20:
-            result = True
+            pass
         else:
-            result = False
-            print('Move Tool Fail!\n')
+            print('Move Tool Fail Timne Out!\n')
 
     """"excute the aligh action for the pegs and holes"""
     def Align_PegHole(self):
         # Get the current position, euler and matrix T
         _, _, Tw_t = self.GetCalibTool()
-        #the current position and
+
+        # the current position and
         Tw_p = np.dot(Tw_t, self.T_tt)
         Th_p = np.dot(np.linalg.inv(self.Tw_h), Tw_p)
+
         # Calculate the position and euler of pegs
         Tw_p_2 = self.Tw_h
         Tw_p_2[2, 3] = Tw_p[2, 3]
@@ -293,8 +285,10 @@ class Robot_Control(object):
         dT_2 = np.dot(np.dot(self.T_tt, dT), np.linalg.inv(self.T_tt))
         Tw_t2 = np.dot(Tw_t, dT_2)
         [position_t2, eulerang_t2] = self.MatrixToEuler(Tw_t2)
+
         # Get the force of the pegs
         myForceVector = self.GetFCForce()
+
         # Move the pegs to target
         self.MoveToolTo(position_t2, eulerang_t2, 20)
         return position_t2, eulerang_t2
@@ -306,19 +300,19 @@ class Robot_Control(object):
         Position = np.zeros(3, dtype=float)
 
         self.s.send('#GetCalibPar@'.encode())
-        time.sleep(0.3)
+        time.sleep(0.01)
 
         time_out = 0
         while len(recvbuf) < 70 and time_out < 30:
             recvbuf += self.s.recv(2048).decode()
             time_out += 1
-            time.sleep(0.1)
+            time.sleep(0.01)
 
         if time_out >= 30:
-            print('Get Tool fail!\n')
+            print('Get Tool Fail Time Out!\n')
             result = False
             return result
-        # print(recvbuf)
+
         px = recvbuf.find('PX')
         endnum_px = recvbuf.find('*', px)
         py = recvbuf.find('PY')
@@ -338,20 +332,6 @@ class Robot_Control(object):
         Euler[0] = round(float(recvbuf[(ex + 2):endnum_ex - 1]), 4)
         Euler[1] = round(float(recvbuf[(ey + 2):endnum_ey - 1]), 4)
         Euler[2] = round(float(recvbuf[(ez + 2):endnum_ez - 1]), 4)
-        # Euler = Euler*np.pi/180
-        # T = np.zeros((4, 4), dtype=float)
-        # T[0, 0] = np.cos(Euler[2]) * np.cos(Euler[1])
-        # T[0, 1] = np.cos(Euler[2]) * np.sin(Euler[1]) * np.sin(Euler[0]) - np.sin(Euler[2]) * np.cos(Euler[0])
-        # T[0, 2] = np.cos(Euler[2]) * np.sin(Euler[1]) * np.cos(Euler[0]) - np.sin(Euler[2]) * np.sin(Euler[0])
-        # T[2, 1] = np.sin(Euler[2]) * np.cos(Euler[1])
-        # T[2, 2] = np.sin(Euler[2]) * np.sin(Euler[1]) * np.sin(Euler[0]) + np.cos(Euler[2]) * np.cos(Euler[0])
-        # T[2, 3] = np.sin(Euler[2]) * np.sin(Euler[1]) * np.cos(Euler[0]) - np.cos(Euler[2]) * np.sin(Euler[0])
-        # T[3, 1] = -np.sin(Euler[1])
-        # T[3, 2] = np.cos(Euler[1]) * np.sin(Euler[0])
-        # T[3, 3] = np.cos(Euler[1]) * np.cos(Euler[0])
-        # T[0, 3] = Position[0]
-        # T[1, 3] = Position[1]
-        # T[2, 3] = Position[2]
         T = self.EulerToMatrix(Position, Euler)
         return Position, Euler, T
 
@@ -360,13 +340,12 @@ class Robot_Control(object):
         recvbuf = ''
         myForceVector = np.zeros(6, dtype=float)
         self.s.send('#GetFCForce@'.encode())
-        time.sleep(0.3)
+        time.sleep(0.01)
         time_out = 0
-        ind = 1
         while len(recvbuf) < 70 and time_out < 30:
             recvbuf += self.s.recv(2048).decode() # join decode()
             time_out += 1
-            time.sleep(0.1)
+            time.sleep(0.01)
 
         if time_out < 30:
             print('Get Force Success!!!')
@@ -374,15 +353,11 @@ class Robot_Control(object):
             result = False
             print('Get Force Fail!\n')
             return result
-        # print(recvbuf)
+
         fx = recvbuf.find('Fx')
-        # print(fx)
         endnum_fx = recvbuf.find('*', fx)
-        # print(endnum_fx)
         fy = recvbuf.find('Fy')
-        # print(fy)
         endnum_fy = recvbuf.find('*', fy)
-        # print(endnum_fy)
         fz = recvbuf.find('Fz')
         endnum_fz = recvbuf.find('*', fz)
         tx = recvbuf.find('Tx')
@@ -406,7 +381,7 @@ class Robot_Control(object):
         CalibResult = True
         return CalibResult
 
-    """"""
+    """Euler to matrix"""
     def EulerToMatrix(self, position, euler):
         euler = euler * np.pi/180
         Wx = euler[0]
@@ -432,7 +407,7 @@ class Robot_Control(object):
         Matrix = np.dot(Unit, Matrix_three)
         return Matrix
 
-    """"""
+    """Euler to Quternion"""
     def EulerToQuternion(self, euler):
         euler = euler * np.pi/180
         x1 = np.cos(euler[1]) * np.cos(euler[2])
@@ -489,8 +464,9 @@ def Test_calibrate():
     Controller = Robot_Control()
 
     """Calibrate the force sensor"""
-    # print('===================== Calibrate the force-moment sensor =========================')
-    # done = Controller.CalibFCforce()
+    print('===================== Calibrate the force-moment sensor =========================')
+    done = Controller.CalibFCforce()
+
     # force = Controller.GetFCForce()
     # print(force)
     # print('=================================================================================')

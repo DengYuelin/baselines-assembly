@@ -45,7 +45,6 @@ class fuzzy_control(object):
         # self.sim_krx, self.sim_kry, self.sim_krz = self.build_fuzzy_system()
 
     def get_output(self, force):
-
         self.sim_kpx.input['fx'] = force[0]
         self.sim_kpx.input['my'] = force[4]
         self.sim_kpx.compute()
@@ -127,9 +126,11 @@ class fuzzy_control(object):
         # self.sim_krz.input['mx'] = index_12
         # self.sim_krz.compute()
         # krz = self.sim_krz.output['krx']
+
         return [round(kpx, 5), round(kpy, 5), round(kpz, 5,), round(krx, 5), round(kry, 5), round(krz, 5)]
 
     def plot_rules(self):
+
         self.unsampled = []
         for i in range(6):
             self.unsampled.append(np.linspace(self.low_input[i], self.high_input[i], 21))
@@ -628,10 +629,10 @@ class fuzzy_control(object):
         # surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
         #                        linewidth=0.4, antialiased=True)
         # plt.show()
+
         return sim_krz
 
     def build_fuzzy_system(self):
-
         # Sparse universe makes calculations faster, without sacrifice accuracy.
         # Only the critical points are included here; making it higher resolution is
         # unnecessary.

@@ -70,12 +70,13 @@ class DDPG(object):
         batch_size=128, observation_range=(-5., 5.), action_range=(-1., 1.), return_range=(-np.inf, np.inf),
         adaptive_param_noise=True, adaptive_param_noise_policy_threshold=.1,
         critic_l2_reg=0., actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1.):
+
         # Inputs.
         self.obs0 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs0')
         self.obs1 = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='obs1')
         self.terminals1 = tf.placeholder(tf.float32, shape=(None, 1), name='terminals1')
         self.rewards = tf.placeholder(tf.float32, shape=(None, 1), name='rewards')
-        self.actions = tf.placeholder(tf.float32, shape=(None,) + action_shape, name='actions')
+        self.actions = tf.placeholder(tf.float32, shape=(None,) + (action_shape,), name='actions')
         self.critic_target = tf.placeholder(tf.float32, shape=(None, 1), name='critic_target')
         self.param_noise_stddev = tf.placeholder(tf.float32, shape=(), name='param_noise_stddev')
 
@@ -147,6 +148,7 @@ class DDPG(object):
         self.setup_target_network_updates()
 
         self.initial_state = None # recurrent architectures not supported yet
+        self.saver = tf.train.Saver()
 
     def setup_target_network_updates(self):
         actor_init_updates, actor_soft_updates = get_target_updates(self.actor.vars, self.target_actor.vars, self.tau)
@@ -275,18 +277,17 @@ class DDPG(object):
             assert noise.shape == action.shape
             action += noise
         action = np.clip(action, self.action_range[0], self.action_range[1])
-
-
         return action, q, None, None
 
     def store_transition(self, obs0, action, reward, obs1, terminal1):
         reward *= self.reward_scale
 
-        B = obs0.shape[0]
-        for b in range(B):
-            self.memory.append(obs0[b], action[b], reward[b], obs1[b], terminal1[b])
-            if self.normalize_observations:
-                self.obs_rms.update(np.array([obs0[b]]))
+        # B = obs0.shape[0]
+        # for b in range(B):
+        #     self.memory.append(obs0[b], action[b], reward[b], obs1[b], terminal1[b])
+        #     if self.normalize_observations:
+        #         self.obs_rms.update(np.array([obs0[b]]))
+        self.memory.append(obs0, action, reward, obs1, terminal1)
 
     def train(self):
         # Get a batch.
@@ -387,3 +388,11 @@ class DDPG(object):
             self.sess.run(self.perturb_policy_ops, feed_dict={
                 self.param_noise_stddev: self.param_noise.current_stddev,
             })
+
+    def store(self, path):
+        self.saver = self.saver.save(self.sess, path)
+
+    def restore(self, sess, path, name):
+        self.saver = tf.train.import_meta_graph(path+name+'.meta')
+        self.saver.restore(sess, tf.train.latest_checkpoint(path))
+        self.sess = sess

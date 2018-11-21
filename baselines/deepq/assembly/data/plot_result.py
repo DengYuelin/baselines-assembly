@@ -10,14 +10,16 @@ import collections
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+import copy as cp
 from baselines.deepq.assembly.src.value_functions import *
 
 """=================================Plot result====================================="""
-YLABEL = ['Fx(N)', 'Fy(N)', 'Fz(N)', 'Mx(Nm)', 'My(Nm)', 'Mz(Nm)']
+YLABEL = ['$F_x(N)$', '$F_y(N)$', '$F_z(N)$', '$M_x(Nm)$', '$M_y(Nm)$', '$M_z(Nm)$']
 Title = ["X axis force", "Y axis force", "Z axis force",
          "X axis moment", "Y axis moment", "Z axis moment"]
 High = np.array([40, 40, 0, 5, 5, 5, 542, -36, 188, 5, 5, 5])
 Low = np.array([-40, -40, -40, -5, -5, -5, 538, -42, 192, -5, -5, -5])
+scale = np.array([40, 40, 40, 5, 5, 5])
 """================================================================================="""
 
 
@@ -37,8 +39,10 @@ def plot(result_path):
 
 
 def plot_force_and_moment(path_2, path_3):
+
     V_force = np.load(path_2)
     V_state = np.load(path_3)
+
     plt.figure(figsize=(15, 10), dpi=100)
     plt.title("Search Result of Force", fontsize=20)
     plt.plot(V_force[:100])
@@ -112,45 +116,139 @@ def plot_continuous_data(path):
     plt.figure(figsize=(20, 15))
     plt.title('Episode Reward')
     plt.tight_layout(pad=3, w_pad=0.5, h_pad=1.0)
-    plt.subplots_adjust(left=0.065, bottom=0.1, right=0.995, top=0.9, wspace=0.2, hspace=0.2)
+    plt.subplots_adjust(left=0.1, bottom=0.15, right=0.98, top=0.9, wspace=0.23, hspace=0.22)
+    # plt.subplots_adjust(left=0.065, bottom=0.1, right=0.995, top=0.9, wspace=0.2, hspace=0.2)
     data = np.zeros((len(raw_data), 12))
     for j in range(len(raw_data)):
         data[j] = raw_data[j, 0]
-    print(data[:, 0])
     for j in range(6):
         plt.subplot(2, 3, j + 1)
-        plt.plot(data[:200, j])
-        plt.ylabel(YLABEL[j], fontsize=18)
-        plt.xlabel('steps', fontsize=18)
-        plt.xticks(fontsize=18)
-        plt.yticks(fontsize=18)
-    plt.savefig('raw_data.jpg')
+        plt.plot(data[:, j]*scale[j], linewidth=2.5)
+        # plt.ylabel(YLABEL[j], fontsize=18)
+        if j>2:
+            plt.xlabel('steps', fontsize=30)
+        plt.title(YLABEL[j], fontsize=30)
+        plt.xticks(fontsize=25)
+        plt.yticks(fontsize=25)
+    # plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.4, hspace=0.2)
+    plt.savefig('raw_data.pdf')
     plt.show()
 
 
+def compute_true_return(path):
+    raw_data = np.load(path)
+    # print(raw_data)
+    clock = 0
+    G = 0.
+    past_gammas = []
+    past_cumulants = []
+    all_G = []
+    for i in range(len(raw_data)):
+        observation, action, done, action_probability = raw_data[i]
+
+        if done == False:
+            gamma = 0.99
+        else:
+            gamma = 0.
+
+        past_gammas.append(gamma)
+        past_cumulants.append(1)
+
+        if done == False:
+            clock += 1
+            G = 0
+            all_G.append(cp.deepcopy(G))
+        else:
+            print('clock', clock)
+            for j in reversed(range(0, clock + 1)):
+                G *= past_gammas[j]
+                G += past_cumulants[j]
+            all_G.append(cp.deepcopy(G))
+            clock = 0
+            past_cumulants = []
+            past_gammas = []
+
+    print(len(raw_data))
+    plt.figure(figsize=(20, 15))
+    plt.plot(all_G[300:400])
+    plt.show()
+    return all_G
+
+
 # Plot the true prediction and true value
-def plot_true_data():
-    f = open('../data/learning_result_policy', 'rb')
-    plot_value_functions = ['Move down Fy', 'Move down Fx', 'Move down Fz', 'Move down Mx', 'Move down My', 'Move down Mz']
-    # plot_value_functions = ['Move down step']
+def plot_different_gamma_data(path):
+    f = open(path, 'rb')
+    titles = ['$\gamma = 0.4$', '$\gamma = 0.8$', '$\gamma = 0.96$', '$\gamma =1.0$']
+    # true_data = compute_true_return('prediction_result_different_gamma.npy')
+    # f = open('../data/learning_result_policy', 'rb')
+    # plot_value_functions = ['Move down Fy', 'Move down Fx', 'Move down Fz', 'Move down Mx', 'Move down My', 'Move down Mz']
+    plot_value_functions = ['Move down step', 'Move down step 2', 'Move down step 3', 'Move down step 4']
+    # plot_value_functions = ['Move down Fx', 'Move down Fx 1', 'Move down Fx 2', 'Move down Fx 3']
     raw_data = pickle.load(f)
-    plt.figure(figsize=(20, 15), dpi=100)
-    plt.title('Episode Reward')
-    plt.tight_layout(pad=3, w_pad=0.5, h_pad=1.0)
-    plt.subplots_adjust(left=0.065, bottom=0.1, right=0.995, top=0.9, wspace=0.2, hspace=0.2)
-    plt.title("True Data")
+    plt.figure(figsize=(20, 15))
+    plt.tight_layout(pad=3, w_pad=1., h_pad=0.5)
+    plt.subplots_adjust(left=0.1, bottom=0.15, right=0.98, top=0.9, wspace=0.23, hspace=0.23)
     # legend = sorted([key for key in plot_value_functions.keys()])
     # print(legend)
     # print(value_functions.keys())
     for j, key in enumerate(plot_value_functions):
-        plt.subplot(2, 3, j + 1)
-        plt.plot(raw_data[('GTD(1)', 'Hindsight Error')][key])
-        plt.plot(raw_data[('GTD(1)', 'Prediction')][key])
+        plt.subplot(2, 2, j + 1)
+        # print(list(raw_data[('GTD(1)', 'Hindsight Error')][key]))
+        # plt.plot(np.array(raw_data[('GTD(1)', 'Hindsight Error')][key])[:], linewidth=2.5)
+        # plt.plot(true_data[300:])
+        plt.plot(np.array(raw_data[('GTD(0)', 'UDE')][key])[600:], linewidth=2.75)
+        # print('true value', np.array(raw_data[('GTD(0)', 'UDE')][key])[300:400])
+        # plt.plot(np.array(raw_data[('GTD(0)', 'TD Error')][key])[600:], linewidth=2.5)
+        # print('old prediction', np.array(raw_data[('GTD(0)', 'TD Error')][key])[300:400])
+        plt.plot(np.array(raw_data[('GTD(0)', 'Prediction')][key])[600:], linewidth=2.75)
+        # plt.plot(np.array(raw_data[('GTD(1)', 'Prediction')][key])[300:] - np.array(raw_data[('GTD(1)', 'Hindsight Error')][key])[300:], linewidth=2.5)
         # plt.legend('True value', 'Prediction value')
-        plt.ylabel(key, fontsize=15)
-        plt.xlabel('steps', fontsize=15)
-        plt.xticks(fontsize=15)
-        plt.yticks(fontsize=15)
+        plt.title(titles[j], fontsize=30)
+        if j > 1:
+            plt.xlabel('steps', fontsize=30)
+        plt.ylabel('Number of steps', fontsize=30)
+        plt.xticks(fontsize=25)
+        plt.yticks(fontsize=25)
+    plt.savefig('different_gamma.pdf')
+    plt.show()
+
+
+# Plot the true prediction and true value
+def plot_different_policy_data(path):
+    f = open(path, 'rb')
+    # true_data = compute_true_return('prediction_result_different_gamma.npy')
+    # f = open('../data/learning_result_policy', 'rb')
+    plot_value_functions = ['Move down Fx', 'Move down Fy', 'Move down Fz', 'Move down Mx', 'Move down My', 'Move down Mz']
+    # plot_value_functions = ['Move down step', 'Move down step 2', 'Move down step 3', 'Move down step 4']
+    # plot_value_functions = ['Move down Fx', 'Move down Fx 1', 'Move down Fx 2', 'Move down Fx 3']
+    raw_data = pickle.load(f)
+    plt.figure(figsize=(20, 15))
+    plt.title('Episode Reward')
+    plt.tight_layout(pad=3, w_pad=1.0, h_pad=1.0)
+    plt.subplots_adjust(left=0.1, bottom=0.15, right=0.98, top=0.9, wspace=0.23, hspace=0.23)
+    # legend = sorted([key for key in plot_value_functions.keys()])
+    # print(legend)
+    # print(value_functions.keys())
+    for j, key in enumerate(plot_value_functions):
+
+        plt.subplot(2, 3, j + 1)
+        # print(list(raw_data[('GTD(1)', 'Hindsight Error')][key]))
+        # plt.plot(np.array(raw_data[('GTD(1)', 'Hindsight Error')][key])[400:]*scale[j], linewidth=2.5)
+        # plt.plot(true_data[300:])
+        plt.plot(np.array(raw_data[('GTD(1)', 'UDE')][key])[1000:]*scale[j], linewidth=2.5)
+        # print('true value', np.array(raw_data[('GTD(0)', 'UDE')][key])[300:400])
+        # plt.plot(np.array(raw_data[('GTD(0)', 'TD Error')][key])[600:], linewidth=2.5, color='r')
+        # print('old prediction', np.array(raw_data[('GTD(0)', 'TD Error')][key])[300:400])
+        plt.plot(np.array(raw_data[('GTD(1)', 'Prediction')][key])[1000:]*scale[j], linewidth=2.5)
+        # plt.plot(np.array(raw_data[('GTD(1)', 'Prediction')][key])[300:] - np.array(raw_data[('GTD(1)', 'Hindsight Error')][key])[300:], linewidth=2.5)
+        # plt.legend('True value', 'Prediction value')
+        plt.title(YLABEL[j], fontsize=30)
+        if j > 2:
+            plt.xlabel('steps', fontsize=30)
+        plt.xticks([0, 50, 100, 150, 200], fontsize=25)
+        plt.yticks(fontsize=25)
+
+    # plt.savefig('different_policies_b.pdf')
     plt.show()
 
 
@@ -165,9 +263,9 @@ if __name__ == "__main__":
     # plot('./search_force.npy')
     # plot_reward('./episode_rewards.npy')
 
-    data = np.load('prediction_result.npy')
+    # data = np.load('prediction_result.npy')
     # print(data[:, 2])
-    plot_continuous_data('prediction_result_1.npy')
+    # plot_continuous_data('prediction_result_different_gamma_six_force.npy')
 
     # f = open('../data/learning_result', 'rb')
     # y = pickle.load(f)
@@ -182,11 +280,15 @@ if __name__ == "__main__":
     # plt.legend(YLABEL)
     # plt.show()
 
-    # plot_true_data()
+    # compute_true_return('prediction_result_different_gamma.npy')
+    # plot_true_data('learning_result_six_force_gamma_0.9')
+    # plot_true_data('learning_result_different_gamma')
+    # plot_different_gamma_data('learning_result_different_policy')
 
-    # past_cumulants = collections.deque([0], maxlen=11)
-    # past_cumulants.append(10)
-    # past_cumulants.append(10)
-    # past_cumulants.clear()
-    # past_cumulants.append(10)
-    # print(past_cumulants)
+    """=============================== plot different policy ===================================== """
+    # plot_different_policy_data('learning_result_six_force_gamma_0.9')
+    # plot_different_policy_data('learning_result_different_policy_new_3')
+    # plot_different_policy_data('learning_result_different_policy')
+
+    """=============================== plot different gamma ======================================== """
+    plot_different_gamma_data('learning_result_different_gamma_new')

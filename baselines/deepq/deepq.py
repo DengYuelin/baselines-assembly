@@ -120,6 +120,7 @@ def learn(env,
           param_noise=False,
           callback=None,
           load_path=None,
+          save_path=None,
           **network_kwargs
           ):
 
@@ -243,8 +244,9 @@ def learn(env,
     update_target()
 
     episode_rewards = [0.0]
+    epoch_episode_states = []
+    epoch_episode_steps = []
     saved_mean_reward = None
-
     with tempfile.TemporaryDirectory() as td:
         td = checkpoint_path or td
 
@@ -263,6 +265,8 @@ def learn(env,
         for i in range(total_episodes):
             obs, _ = env.reset()
             episode_reward = 0.
+            episode_step = 0
+            episode_states = []
             reset = True
             logger.info("================== The {} episode start !!! ===================".format(i))
             for j in range(total_steps):
@@ -301,13 +305,14 @@ def learn(env,
 
                 # Store transition in the replay buffer.
                 replay_buffer.add(obs, action, rew, new_obs, float(done))
+                episode_states.append(cp.deepcopy(obs))
                 obs = new_obs
                 episode_reward += rew
+                episode_step += 1
 
                 if done:
                     # obs = env.reset()
                     # reset = True
-
                     # logger.info("================== The Search Phase has Finished!!! ===================")
                     break
 
@@ -350,9 +355,13 @@ def learn(env,
                         saved_mean_reward = mean_100ep_reward
                 t += 1
 
+            epoch_episode_states.append(cp.deepcopy(episode_states))
+            epoch_episode_steps.append(cp.deepcopy(episode_step))
             episode_rewards.append(cp.deepcopy(episode_reward))
-            np.save('../data/episode_rewards_none_fuzzy_noise', episode_rewards)
-            replay_buffer.save_sample('../data/sample_data_none_fuzzy_noise')
+            np.save('../data/episode_rewards' + save_path, episode_rewards)
+            np.save('../data/episode_state' + save_path, epoch_episode_states)
+            np.save('../data/episode_steps' + save_path, epoch_episode_steps)
+            # replay_buffer.save_sample('../data/sample_data' + save_path)
 
         if model_saved:
             if print_freq is not None:
