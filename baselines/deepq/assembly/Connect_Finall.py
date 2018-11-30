@@ -71,14 +71,14 @@ class Robot_Control(object):
 
     """move line to the target"""
     def MoveToolTo(self, position, euler, vel):
+
         # change euler to quter
         Q = self.EulerToQuternion(euler)
 
+        Filecounter = 0
         # send the code head
         swrite = '#FileHead@'
         self.s.send(swrite.encode())
-
-        Filecounter = 0
 
         # The send module
         Filecounter += 1

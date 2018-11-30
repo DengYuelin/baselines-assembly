@@ -280,7 +280,6 @@ class fuzzy_control(object):
         plt.xticks(fontsize=18)
         plt.yticks(fontsize=18)
 
-
         for i in range(21):
             for j in range(21):
                 self.sim_krz.input['mx'] = x[i, j]
@@ -302,7 +301,7 @@ class fuzzy_control(object):
         ax.set_yticklabels([-1, -0.5, 0, 0.5, 1])
         plt.xticks(fontsize=18)
         plt.yticks(fontsize=18)
-        plt.savefig('fuzzy_rules.pdf')
+        plt.savefig('fuzzy_rules.jpg')
         plt.show()
 
 

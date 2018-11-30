@@ -165,9 +165,6 @@ def plot_raw_data(path_1):
     data = np.load(path_1)
     force_m = np.zeros((len(data), 12))
 
-  #  V_force_m = np.zeros((len(V_force), 12))
-  #  V_state_m = np.zeros((len(V_force), 12))
-
     plt.figure(figsize=(20, 20), dpi=100)
     plt.tight_layout(pad=3, w_pad=0.5, h_pad=1.0)
     plt.subplots_adjust(left=0.065, bottom=0.1, right=0.995, top=0.9, wspace=0.2, hspace=0.2)
@@ -198,7 +195,7 @@ def plot_raw_data(path_1):
                     plt.xticks(fontsize=15)
                     plt.yticks(fontsize=15)
         i += 1
-   # plt.savefig('raw_data_random_policy1.jpg')
+    # plt.savefig('raw_data_random_policy1.jpg')
 
 
 def plot_compare(fuzzy_path, none_fuzz_path):
@@ -226,7 +223,8 @@ def plot_compare(fuzzy_path, none_fuzz_path):
     # plt.ylabel('Episode Reward', fontsize=20)
     # plt.xlabel('Episodes', fontsize=20)
 
-    plt.savefig('ddpg_episode_step.pdf')
+    plt.savefig('./figure/pdf/ddpg_episode_step.pdf')
+    plt.savefig('./figure/jpg/ddpg_episode_step.jpg')
     plt.show()
 
 

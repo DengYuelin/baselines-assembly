@@ -172,7 +172,8 @@ def plot_compare(fuzzy_path, none_fuzz_path):
     # plt.ylabel('Episode Reward', fontsize=20)
     # plt.xlabel('Episodes', fontsize=20)
 
-    # plt.savefig('dqn_episode_step.pdf')
+    plt.savefig('./figure/pdf/dqn_episode_step.pdf')
+    plt.savefig('./figure/jpg/dqn_episode_step.jpg')
     plt.show()
 
 
@@ -208,12 +209,12 @@ if __name__ == "__main__":
     # reward_fuzzy = np.load('./episode_rewards_fuzzy.npy')
     # reward_none_fuzzy = np.load('./episode_rewards_none_fuzzy.npy')
 
-    # plot_compare('episode_steps_fuzzy_noise_final.npy', 'episode_steps_none_fuzzy_noise_final.npy')
+    plot_compare('episode_steps_fuzzy_noise_final.npy', 'episode_steps_none_fuzzy_noise_final.npy')
     # plot_compare('episode_rewards_fuzzy_noise_final.npy', 'episode_rewards_none_fuzzy_noise_final.npy')
 
     # plot_learning_force_and_moment('./test_episode_state_fuzzy_final_new.npy', './test_episode_state_fuzzy_final_new.npy', 'dqn_none_fuzzy')
     # plot_learning_force_and_moment('./test_episode_state_none_fuzzy_final.npy', './test_episode_state_none_fuzzy_final.npy', 'dqn_none_fuzzy')
-    plot_learning_force_and_moment('episode_state_fuzzy_noise.npy', 'episode_state_fuzzy_noise.npy', 'dqn_none_fuzzy')
+    # plot_learning_force_and_moment('episode_state_fuzzy_noise.npy', 'episode_state_fuzzy_noise.npy', 'dqn_none_fuzzy')
     # plot_learning_force_and_moment('episode_state_none_fuzzy_noise.npy', 'episode_state_none_fuzzy_noise.npy', 'dqn_fuzzy')
 
     #####

@@ -1150,3 +1150,5 @@ class env_prediction_learn(object):
                 self.pull_terminal = True
                 break
         return self.pull_terminal
+
+
