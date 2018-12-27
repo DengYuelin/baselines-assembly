@@ -32,11 +32,23 @@ class Robot_Control(object):
                               [-2.28373930e-02, - 2.02911265e-03, 9.99737134e-01, 6.16471626e+01],
                               [0.0, 0.0, 0.0, 1.0]])
 
+        """The single hole in world"""
+        self.Tw_h_single = np.array([[9.99588567e-01, -1.75915494e-02, 2.26546690e-02,  5.46446162e+02],
+                                     [1.75403761e-02, 9.99843140e-01, 2.45559349e-03, -1.04633584e+02],
+                                     [-2.26943131e-02, -2.05721177e-03, 9.99740334e-01, 6.28998272e+01],
+                                     [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
+
         """The peg in tool"""
         # self.Tt_p = np.array([[0.992324636460983, -0.123656366940134, -0.000957450195690770, 1.41144492938517],
         #                      [-0.123650357439767, -0.992313999324900, 0.00485764354118817, -0.848850965882200],
         #                      [-0.00155076978095379, -0.00469357455783674, -0.999987743210303, 129.363218736061],
         #                      [0, 0, 0, 1]])
+
+        """tool with single peg """
+        self.tool_single_peg = np.array([[1, 0, 0, 0],
+                                        [0, -1, 0, 0],
+                                        [0, 0, -1, 158],
+                                        [0, 0, 0, 1]])
 
         """Second version: we don't need to know epirical position ::::::: Theoritical matrix"""
         self.T_tt = np.array([[1, 0, 0, 0],
@@ -47,6 +59,7 @@ class Robot_Control(object):
         # target position and euler
         self.target_pos = np.array([539.89459, -39.68952, 191.5599])
         self.target_euler = np.array([179.88302, 1.29705, 1.01166])
+
         # for prediction
         # self.target_pos = np.array([539.89459, -39.68952, 190.5599])
         # self.target_euler = np.array([179.88302, 1.29705, 1.01166])
@@ -56,8 +69,14 @@ class Robot_Control(object):
         self.final_euler = np.array([179.88444, 1.30539, 0.21414])
         self.final_force = np.array([0.9143, -11.975, -5.3944, 0., 0.0426, -0.1369])
 
-        self.start_pos = np.array([539.88842, -39.70193, 195.85147])
+        self.start_pos = np.array([539.88842, -39.70193, 205.85147])
         self.start_euler = np.array([179.88302, 1.30399, 1.00945])
+
+        self.set_pos = np.array([550.0107, -104.2418, 227.8422])
+        self.set_euler = np.array([179.88302, 1.30399, 1.00945])
+
+        self.start_insert_pos = np.array([550.0107, -104.2418, 220.8422])
+        self.start_insert_euler = np.array([179.88302, 1.30399, 1.00945])
 
         self.Connect()
 
@@ -175,6 +194,36 @@ class Robot_Control(object):
             pass
         else:
             print('Move Tool Fail for Time Out!\n')
+
+    """move line directly to the target"""
+    def Moveline(self, position, euler, vel):
+
+        Q = self.EulerToQuternion(euler)
+        Filecounter = 0
+
+        swrite = '#FileHead@'
+        self.s.send(swrite.encode())
+
+        Filecounter += 1
+        swrite = '#FileData ' + str(Filecounter) + '#SetTarget_1' + '  ' \
+                 + '[' + str('%0.3f' %position[0])
+        self.s.send(swrite.encode())
+
+        Filecounter += 1
+        swrite = '#FileData ' + str(Filecounter) + ',' + str('%0.3f' %position[1]) + ',' + str('%0.3f' %position[2]) + ']' + '!'
+        self.s.send(swrite.encode())
+
+        Filecounter += 1
+        swrite = '#FileData ' + str(Filecounter) + '[' + str('%0.4f' %Q[0]) + ',' + str('%0.4f' %Q[1]) +\
+                 ',' + str('%0.4f' %Q[2]) + ',' + str('%0.4f' %Q[3]) + '];' + str('%0.4f' %vel) + '@'
+        self.s.send(swrite.encode())
+
+        # Send the finish of the document
+        Filecounter += 1
+        swrite = '#FileEnd@'
+        self.s.send(swrite.encode())
+
+        return True
 
     """move joint to the target"""
     def MoveJointTo(self, position, vel):
@@ -303,7 +352,7 @@ class Robot_Control(object):
         time.sleep(0.01)
 
         time_out = 0
-        while len(recvbuf) < 70 and time_out < 30:
+        while len(recvbuf) < 76 and time_out < 30:
             recvbuf += self.s.recv(2048).decode()
             time_out += 1
             time.sleep(0.01)
@@ -464,8 +513,8 @@ def Test_calibrate():
     Controller = Robot_Control()
 
     """Calibrate the force sensor"""
-    print('===================== Calibrate the force-moment sensor =========================')
-    done = Controller.CalibFCforce()
+    # print('===================== Calibrate the force-moment sensor =========================')
+    # done = Controller.CalibFCforce()
 
     # force = Controller.GetFCForce()
     # print(force)
@@ -482,8 +531,20 @@ def Test_calibrate():
 
     """used to search the initial position and euler; please note the other code"""
     # print('======================== Position and Force Information =========================')
+    position, euler, T = Controller.GetCalibTool()
+    Controller.Moveline(position + [0, 0, 1], euler + [0., 0., 0.], 5.)
+    # T_z = Controller.EulerToMatrix(np.array([0., 0., 0.]), np.array([0., 0., -90]))
+    # T_final = np.dot(T, T_z)
+    #
+    # pos, euler = Controller.MatrixToEuler(T_final)
+    # print(pos)
+    # Controller.MoveToolTo(pos, euler, 5)
+
+
+    # Controller.MoveToolTo(position + [0, 0, 0], euler + [0, 0, -90.], 20)
+
+    # Controller.MoveJointTo([0., 0., 0., .0, 0., 10], 5)
     # position, euler, T = Controller.GetCalibTool()
-    # Controller.MoveToolTo(position + [0, 0, 150], euler + [0, 0., 0.], 20)
     # print('position', position)
     # print('euler', euler)
     #
@@ -498,7 +559,7 @@ def Test_calibrate():
 
     """move to last initial position and orientation"""
     # print('================= Move to the initial position and orientation ==================')
-    # Controller.MoveToolTo(Controller.start_pos, Controller.start_euler, 20)
+    # Controller.MoveToolTo(Controller.start_insert_pos, Controller.start_insert_euler, 2)
     # position, euler, T = Controller.GetCalibTool()
     # print('position', position)
     # print('euler', euler)
@@ -507,7 +568,7 @@ def Test_calibrate():
     # print('=================================================================================')
 
     """Get the position and orientation of pegs"""
-    # print(np.dot(T, Controller.Tt_p))
+    # print(np.dot(T, Controller.tool_single_peg))
 
 
 if __name__ == "__main__":
