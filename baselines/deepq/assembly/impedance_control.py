@@ -38,9 +38,9 @@ print(obv)
 
 for i in range(args['episodes']):
 
-    done = env.force_control(env.desired_force_moment[0], obv[:6], obv[6:], i)
+    done = env.force_control(T, env.desired_force_moment[0], obv[:6], obv[6:], i)
 
-    obv = env.get_state()
+    obv, T = env.get_state()
 
     if done:
         env.pull_peg_up()

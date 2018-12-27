@@ -142,6 +142,7 @@ class env_single_insert_control(object):
 
         return self.init_state
 
+    """step"""
     def step(self, action, step_num):
         """choose one action from the different actions vector"""
         done = False
@@ -258,7 +259,7 @@ class env_single_insert_control(object):
             step_num += 1
 
     """Force Control"""
-    def force_control(self, force_desired, force, state, step_num):
+    def force_control(self, T, force_desired, force, state, step_num):
         done = False
         print("=============================================================")
         print('force', force)
@@ -283,6 +284,9 @@ class env_single_insert_control(object):
         """Get the euler"""
         setEuler = self.kr * force_error[3:6]
 
+        """Give the required angle along z-axis"""
+        setEuler[2] = 0.
+
         setVel = max(self.kv * abs(sum(force_error[:3])), 0.5)
 
         """Judge the force&moment is safe for object"""
@@ -294,7 +298,8 @@ class env_single_insert_control(object):
             exit("The force is too large!!!")
         else:
             """Move and rotate the pegs"""
-            self.robot_control.MoveToolTo(state[:3] + setPosition, state[3:] + setEuler, setVel)
+            self.robot_control.MovelineTo(T, setPosition, setEuler, setVel)
+            # self.robot_control.MoveToolTo(state[:3] + setPosition, state[3:] + setEuler, setVel)
             print('setPosition', setPosition)
             print('euLer', setEuler)
 
@@ -311,7 +316,7 @@ class env_single_insert_control(object):
         self.state[:6] = self.robot_control.GetFCForce()
         """Get the current position"""
         self.state[6:9], self.state[9:12], T = self.robot_control.GetCalibTool()
-        return self.state
+        return self.state, T
 
     """Normalization of state"""
     def get_obs(self, current_state):

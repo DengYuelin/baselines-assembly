@@ -195,6 +195,14 @@ class Robot_Control(object):
         else:
             print('Move Tool Fail for Time Out!\n')
 
+    """move line to target"""
+    def MovelineTo(self, T, pos_offset, euler_offset, vel):
+
+        T_rotate = self.EulerToMatrix(pos_offset, euler_offset)
+        T_final = np.dot(T, T_rotate)
+        pos_final, euler_final = self.MatrixToEuler(T_final)
+        self.MoveToolTo(pos_final, euler_final, vel)
+
     """move line directly to the target"""
     def Moveline(self, position, euler, vel):
 
@@ -389,9 +397,8 @@ class Robot_Control(object):
         recvbuf = ''
         myForceVector = np.zeros(6, dtype=float)
         self.s.send('#GetFCForce@'.encode())
-        time.sleep(0.01)
         time_out = 0
-        while len(recvbuf) < 70 and time_out < 30:
+        while len(recvbuf) < 76 and time_out < 30:
             recvbuf += self.s.recv(2048).decode() # join decode()
             time_out += 1
             time.sleep(0.01)
