@@ -222,8 +222,8 @@ class Robot_Control(object):
         self.s.send(swrite.encode())
 
         Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + '[' + str('%0.4f' %Q[0]) + ',' + str('%0.4f' %Q[1]) +\
-                 ',' + str('%0.4f' %Q[2]) + ',' + str('%0.4f' %Q[3]) + '];' + str('%0.4f' %vel) + '@'
+        swrite = '#FileData ' + str(Filecounter) + '[' + str('%0.3f' %Q[0]) + ',' + str('%0.3f' %Q[1]) +\
+                 ',' + str('%0.3f' %Q[2]) + ',' + str('%0.3f' %Q[3]) + '];' + str('%0.3f' %vel) + '@'
         self.s.send(swrite.encode())
 
         # Send the finish of the document
@@ -398,8 +398,9 @@ class Robot_Control(object):
         myForceVector = np.zeros(6, dtype=float)
         self.s.send('#GetFCForce@'.encode())
         time_out = 0
+        time.sleep(0.01)
         while len(recvbuf) < 76 and time_out < 30:
-            recvbuf += self.s.recv(2048).decode() # join decode()
+            recvbuf += self.s.recv(2048).decode()
             time_out += 1
             time.sleep(0.01)
 
@@ -523,8 +524,8 @@ def Test_calibrate():
     # print('===================== Calibrate the force-moment sensor =========================')
     # done = Controller.CalibFCforce()
 
-    # force = Controller.GetFCForce()
-    # print(force)
+    force = Controller.GetFCForce()
+    print(force)
     # print('=================================================================================')
 
     """Align peg and hole"""
@@ -538,8 +539,8 @@ def Test_calibrate():
 
     """used to search the initial position and euler; please note the other code"""
     # print('======================== Position and Force Information =========================')
-    position, euler, T = Controller.GetCalibTool()
-    Controller.Moveline(position + [0, 0, 1], euler + [0., 0., 0.], 5.)
+    # position, euler, T = Controller.GetCalibTool()
+    # Controller.Moveline(position + [0, 0, 1], euler + [0., 0., 0.], 5.)
     # T_z = Controller.EulerToMatrix(np.array([0., 0., 0.]), np.array([0., 0., -90]))
     # T_final = np.dot(T, T_z)
     #
