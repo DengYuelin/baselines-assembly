@@ -524,8 +524,8 @@ def Test_calibrate():
     # print('===================== Calibrate the force-moment sensor =========================')
     # done = Controller.CalibFCforce()
 
-    force = Controller.GetFCForce()
-    print(force)
+    # force = Controller.GetFCForce()
+    # print(force)
     # print('=================================================================================')
 
     """Align peg and hole"""

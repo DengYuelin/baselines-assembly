@@ -133,11 +133,14 @@ class fuzzy_control(object):
         return [round(kpx, 5), round(kpy, 5), round(kpz, 5,), round(krx, 5), round(kry, 5), round(krz, 5)]
 
     def plot_rules(self):
+
         self.unsampled = []
+
+        fontsize=22
         for i in range(6):
             self.unsampled.append(np.linspace(self.low_input[i], self.high_input[i], 21))
 
-        plt.figure(figsize=(20, 12), dpi=100)
+        fig = plt.figure(figsize=(20, 12), dpi=1000)
         plt.title('Fuzzy Rules', fontsize=30)
         # plt.title('Fuzzy Rules')
 
@@ -152,29 +155,29 @@ class fuzzy_control(object):
         for i in range(21):
             for j in range(21):
                 self.sim_kpx.input['fx'] = x[i, j]
-                self.sim_kpx.input['my'] = y[i, j,]
+                self.sim_kpx.input['my'] = y[i, j]
                 self.sim_kpx.compute()
                 z[i, j] = self.sim_kpx.output['kpx']
-        ax = plt.subplot(231, projection='3d')
-        # ax = fig.add_subplot(231, projection='3d')
-        surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
+
+        ax_1 = plt.subplot(231, projection='3d')
+        surf = ax_1.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
-        ax.view_init(20, 235)
+        ax_1.view_init(20, 235)
+        ax_1.set_zlabel("$K_p^x$", fontsize=22, labelpad=fontsize)
+        ax_1.set_xlabel("    $V_{F_x}$", fontsize=22, labelpad=fontsize)
+        ax_1.set_ylabel("    $V_{M_y}$", fontsize=22, labelpad=fontsize)
+        ax_1.set_xticks([-1, -0.5, 0, 0.5, 1])
+        ax_1.set_yticks([-1, -0.5, 0, 0.5, 1])
+        ax_1.set_zticks([0.004, 0.008, 0.012, 0.016])
+        plt.tick_params(labelsize=fontsize)
+        plt.xticks(fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
+
+        # Loop through the system 21*21 times to collect the control surface
         upsampled_x = self.unsampled[1]
         upsampled_y = self.unsampled[3]
         x, y = np.meshgrid(upsampled_x, upsampled_y)
         z = np.zeros_like(x)
-        ax.set_zlabel("$K_{px}$", fontsize=22, labelpad=18)
-        ax.set_xlabel("    $V_{F_x}$", fontsize=22, labelpad=18)
-        ax.set_ylabel("    $V_{M_y}$", fontsize=22, labelpad=18)
-        ax.set_xticks([-1, -0.5, 0, 0.5, 1])
-        ax.set_yticks([-1, -0.5, 0, 0.5, 1])
-        ax.set_zticks([0.004, 0.008, 0.012, 0.016])
-        plt.tick_params(labelsize=16)
-        plt.xticks(fontsize=18)
-        plt.yticks(fontsize=18)
-
-        # Loop through the system 21*21 times to collect the control surface
         for i in range(21):
             for j in range(21):
                 self.sim_kpy.input['fy'] = x[i, j]
@@ -182,25 +185,25 @@ class fuzzy_control(object):
                 self.sim_kpy.compute()
                 z[i, j] = self.sim_kpy.output['kpy']
 
-        ax = plt.subplot(232, projection='3d')
+        ax_2 = plt.subplot(232, projection='3d')
         # ax = fig.add_subplot(232, projection='3d')
-        surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
+        surf = ax_2.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
-        ax.view_init(20, 235)
+        ax_2.view_init(20, 235)
+        ax_2.set_zlabel("$K_p^y$", fontsize=22, labelpad=fontsize)
+        ax_2.set_xlabel("    $V_{F_y}$", fontsize=22, labelpad=fontsize)
+        ax_2.set_ylabel("    $V_{M_x}$", fontsize=22, labelpad=fontsize)
+        ax_2.set_xticks([-1, -0.5, 0, 0.5, 1])
+        ax_2.set_yticks([-1, -0.5, 0, 0.5, 1])
+        ax_2.set_zticks([0.004, 0.008, 0.012, 0.016])
+        plt.tick_params(labelsize=fontsize)
+        plt.xticks(fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
+
         upsampled_x = self.unsampled[0]
         upsampled_y = self.unsampled[1]
         x, y = np.meshgrid(upsampled_x, upsampled_y)
         z = np.zeros_like(x)
-        ax.set_zlabel("$K_{py}$", fontsize=22, labelpad=18)
-        ax.set_xlabel("    $V_{F_y}$", fontsize=22, labelpad=18)
-        ax.set_ylabel("    $V_{M_x}$", fontsize=22, labelpad=18)
-        ax.set_xticks([-1, -0.5, 0, 0.5, 1])
-        ax.set_yticks([-1, -0.5, 0, 0.5, 1])
-        ax.set_zticks([0.004, 0.008, 0.012, 0.016])
-        plt.tick_params(labelsize=16)
-        plt.xticks(fontsize=18)
-        plt.yticks(fontsize=18)
-
         for i in range(21):
             for j in range(21):
                 self.sim_kpz.input['fx'] = x[i, j]
@@ -208,26 +211,26 @@ class fuzzy_control(object):
                 self.sim_kpz.compute()
                 z[i, j] = self.sim_kpz.output['kpz']
 
-        ax = plt.subplot(233, projection='3d')
+        ax_3 = plt.subplot(233, projection='3d')
         # ax = fig.add_subplot(233, projection='3d')
-        surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
+        surf = ax_3.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
-        ax.view_init(20, 235)
+        ax_3.view_init(20, 235)
+        # ax.set_xticks([-40, -20, 0, 20, 40])
+        z = np.zeros_like(x)
+        ax_3.set_zlabel("$K_p^z$", fontsize=22, labelpad=fontsize)
+        ax_3.set_xlabel("    $V_{F_x}$", fontsize=22, labelpad=fontsize)
+        ax_3.set_ylabel("    $V_{F_y}$", fontsize=22, labelpad=fontsize)
+        ax_3.set_xticks([-1, -0.5, 0, 0.5, 1])
+        ax_3.set_yticks([-1, -0.5, 0, 0.5, 1])
+        ax_3.set_zticks([0.004, 0.008, 0.012, 0.016,0.02])
+        plt.tick_params(labelsize=fontsize)
+        plt.xticks(fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
+
         upsampled_x = self.unsampled[1]
         upsampled_y = self.unsampled[3]
         x, y = np.meshgrid(upsampled_x, upsampled_y)
-        ax.set_xticks([-40, -20, 0, 20, 40])
-        z = np.zeros_like(x)
-        ax.set_zlabel("$K_{pz}$", fontsize=22, labelpad=18)
-        ax.set_xlabel("    $V_{F_x}$", fontsize=22, labelpad=18)
-        ax.set_ylabel("    $V_{F_y}$", fontsize=22, labelpad=18)
-        ax.set_xticks([-1, -0.5, 0, 0.5, 1])
-        ax.set_yticks([-1, -0.5, 0, 0.5, 1])
-        ax.set_zticks([0.004, 0.008, 0.012, 0.016,0.02])
-        plt.tick_params(labelsize=16)
-        plt.xticks(fontsize=18)
-        plt.yticks(fontsize=18)
-
         for i in range(21):
             for j in range(21):
                 self.sim_krx.input['fy'] = x[i, j]
@@ -235,26 +238,26 @@ class fuzzy_control(object):
                 self.sim_krx.compute()
                 z[i, j] = self.sim_krx.output['krx']
 
-        ax = plt.subplot(234, projection='3d')
+        ax_4 = plt.subplot(234, projection='3d')
         # ax = fig.add_subplot(234, projection='3d')
-        surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
+        surf = ax_4.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
-        ax.view_init(20, 235)
+        ax_4.view_init(20, 235)
 
         """kry"""
-        upsampled_x = self.unsampled[1]
-        upsampled_y = self.unsampled[3]
+        ax_4.set_xticks([-1, -0.5, 0, 0.5, 1])
+        ax_4.set_yticks([-1, -0.5, 0, 0.5, 1])
+        ax_4.set_zlabel("$K_r^x$", fontsize=22, labelpad=fontsize)
+        ax_4.set_xlabel("  $V_{F_y}$", fontsize=22, labelpad=fontsize)
+        ax_4.set_ylabel("    $V_{M_x}$", fontsize=22, labelpad=fontsize)
+        plt.tick_params(labelsize=fontsize)
+        plt.xticks(fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
+
+        upsampled_x = self.unsampled[0]
+        upsampled_y = self.unsampled[4]
         x, y = np.meshgrid(upsampled_x, upsampled_y)
         z = np.zeros_like(x)
-        ax.set_xticks([-1, -0.5, 0, 0.5, 1])
-        ax.set_yticks([-1, -0.5, 0, 0.5, 1])
-        ax.set_zlabel("$K_{prx}$", fontsize=22, labelpad=18)
-        ax.set_xlabel("  $V_{F_y}$", fontsize=22, labelpad=18)
-        ax.set_ylabel("    $V_{M_x}$", fontsize=22, labelpad=18)
-        plt.tick_params(labelsize=16)
-        plt.xticks(fontsize=18)
-        plt.yticks(fontsize=18)
-
         for i in range(21):
             for j in range(21):
                 self.sim_kry.input['fx'] = x[i, j]
@@ -262,24 +265,24 @@ class fuzzy_control(object):
                 self.sim_kry.compute()
                 z[i, j] = self.sim_kry.output['kry']
 
-        ax = plt.subplot(235, projection='3d')
+        ax_5 = plt.subplot(235, projection='3d')
         # ax = fig.add_subplot(235, projection='3d')
-        surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
+        surf = ax_5.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
-        ax.view_init(20, 235)
+        ax_5.view_init(20, 235)
+        z = np.zeros_like(x)
+        ax_5.set_xticks([-1, -0.5, 0, 0.5, 1])
+        ax_5.set_yticks([-1, -0.5, 0, 0.5, 1])
+        ax_5.set_zlabel("$K_r^y$", fontsize=22, labelpad=fontsize)
+        ax_5.set_xlabel("  $V_{F_x}$", fontsize=22, labelpad=fontsize)
+        ax_5.set_ylabel("    $V_{M_y}$", fontsize=22, labelpad=fontsize)
+        plt.tick_params(labelsize=fontsize)
+        plt.xticks(fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
+
         upsampled_x = self.unsampled[3]
         upsampled_y = self.unsampled[5]
         x, y = np.meshgrid(upsampled_x, upsampled_y)
-        z = np.zeros_like(x)
-        ax.set_xticks([-1, -0.5, 0, 0.5, 1])
-        ax.set_yticks([-1, -0.5, 0, 0.5, 1])
-        ax.set_zlabel("$K_{pry}$", fontsize=22, labelpad=18)
-        ax.set_xlabel("  $V_{F_x}$", fontsize=22, labelpad=18)
-        ax.set_ylabel("    $V_{M_y}$", fontsize=22, labelpad=18)
-        plt.tick_params(labelsize=16)
-        plt.xticks(fontsize=18)
-        plt.yticks(fontsize=18)
-
         for i in range(21):
             for j in range(21):
                 self.sim_krz.input['mx'] = x[i, j]
@@ -287,22 +290,21 @@ class fuzzy_control(object):
                 self.sim_krz.compute()
                 z[i, j] = self.sim_krz.output['krz']
 
-        ax = plt.subplot(236, projection='3d')
-        surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
+        ax_6 = plt.subplot(236, projection='3d')
+        surf = ax_6.plot_surface(x, y, z, rstride=1, cstride=1, cmap='viridis',
                                linewidth=0.4, antialiased=True)
-        ax.view_init(20, 235)
-        ax.set_zlabel("$K_{prz}$", fontsize=22, labelpad=18)
-        # ax.plt.zlabel("$K_{prz}$", fontsize=22)
-        # ax.set_title("$K_{prz}$", fontsize=22)
-        ax.set_xlabel("  $V_{M_x}$", fontsize=22, labelpad=18)
-        ax.set_ylabel("    $V_{M_z}$", fontsize=22, labelpad=18)
-        plt.tick_params(labelsize=16)
-        ax.set_xticklabels([-1, -0.5, 0, 0.5, 1])
-        ax.set_yticklabels([-1, -0.5, 0, 0.5, 1])
-        plt.xticks(fontsize=18)
-        plt.yticks(fontsize=18)
-        plt.savefig('fuzzy_rules.jpg')
-        plt.show()
+        ax_6.view_init(20, 235)
+        ax_6.set_xticks([-1, -0.5, 0, 0.5, 1])
+        ax_6.set_yticks([-1, -0.5, 0, 0.5, 1])
+        ax_6.set_zlabel("$K_r^z$", fontsize=22, labelpad=fontsize)
+        ax_6.set_xlabel("  $V_{M_x}$", fontsize=22, labelpad=fontsize)
+        ax_6.set_ylabel("    $V_{M_z}$", fontsize=22, labelpad=fontsize)
+        plt.tick_params(labelsize=fontsize)
+        plt.xticks(fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
+        plt.colorbar(ax_1, ax=[ax_1, ax_2, ax_3, ax_4, ax_5, ax_6])
+        plt.savefig('fuzzy_rules.pdf')
+        # plt.show()
 
 
     def build_fuzzy_kpx(self):

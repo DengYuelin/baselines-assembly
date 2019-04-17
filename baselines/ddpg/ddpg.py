@@ -277,20 +277,20 @@ def learn(network,
         if rank == 0:
             logger.dump_tabular()
 
-        # save data
-        np.save(path+'train_reward_none_fuzzy', epoch_episode_rewards)
-        np.save(path+'train_step_none_fuzzy', epoch_episode_steps)
-        np.save(path+'train_states_none_fuzzy', epoch_episode_states)
-
-        # agent save
-        agent.store(model_path + model_name)
+        # # save data
+        # np.save(path+'train_reward_none_fuzzy', epoch_episode_rewards)
+        # np.save(path+'train_step_none_fuzzy', epoch_episode_steps)
+        # np.save(path+'train_states_none_fuzzy', epoch_episode_states)
+        #
+        # # agent save
+        # agent.store(model_path + model_name)
 
 
 if __name__ == '__main__':
 
     # env = env_search_control()
-    env = env_continuous_search_control(fuzzy=False)
+    # env = env_continuous_search_control(fuzzy=False)
 
-    # env = gym.make("HalfCheetah-v2")
+    env = gym.make("HalfCheetah-v2")
     path = './data/'
     learn(network='mlp', env=env, path=path)
