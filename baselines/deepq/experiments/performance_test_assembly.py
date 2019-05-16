@@ -2,7 +2,7 @@
 """
 # @Time    : 25/10/18 2:32 PM
 # @Author  : ZHIMIN HOU
-# @FileName: test_assembly.py
+# @FileName: performance_test_assembly.py
 # @Software: PyCharm
 # @Github    ： https://github.com/hzm2016
 """
@@ -16,7 +16,7 @@ from baselines.deepq.assembly.Env_robot_control import env_search_control
 
 
 def main(
-        test_episodes=10,
+        test_episodes=1,
         test_steps=50
         ):
     env = env_search_control()
@@ -43,10 +43,11 @@ def main(
             episode_obs.append(obs)
         episode_rewards.append(cp.deepcopy(episode_rew))
         episode_states.append(cp.deepcopy(episode_obs))
+        print("Episode", i)
         print("Episode reward", episode_rew)
 
-    np.save('../data/test_episode_reward', episode_rewards)
-    np.save('../data/test_episode_state', episode_states)
+    np.save('../data/test_episode_reward_none_fuzzy_2', episode_rewards)
+    np.save('../data/test_episode_state_none_fuzzy__2', episode_states)
 
 
 if __name__ == '__main__':

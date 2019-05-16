@@ -69,14 +69,17 @@ class Robot_Control(object):
         self.final_euler = np.array([179.88444, 1.30539, 0.21414])
         self.final_force = np.array([0.9143, -11.975, -5.3944, 0., 0.0426, -0.1369])
 
-        self.start_pos = np.array([539.88842, -39.70193, 205.85147])
-        self.start_euler = np.array([179.88302, 1.30399, 1.00945])
+        # self.start_pos = np.array([539.88842, -39.70193, 205.85147])
+        # self.start_euler = np.array([179.88302, 1.30399, 1.00945])
+
+        self.start_pos = np.array([539.8759, -39.7005, 194.8086])
+        self.start_euler = np.array([179.8834, 1.3056,  -5.4893])
 
         self.set_pos = np.array([550.0107, -104.2418, 227.8422])
         self.set_euler = np.array([179.88302, 1.30399, 1.00945])
 
-        self.start_insert_pos = np.array([550.0107, -104.2418, 220.8422])
-        self.start_insert_euler = np.array([179.88302, 1.30399, 1.00945])
+        self.start_insert_pos = np.array([539.8759, -39.7005, 193.8086])
+        self.start_insert_euler = np.array([179.8834, 1.3056,  -5.4893])
 
         self.Connect()
 
@@ -403,6 +406,7 @@ class Robot_Control(object):
             recvbuf += self.s.recv(2048).decode()
             time_out += 1
             time.sleep(0.01)
+        print('time_out', time_out)
 
         if time_out < 30:
             print('Get Force Success!!!')
@@ -423,12 +427,15 @@ class Robot_Control(object):
         endnum_ty = recvbuf.find('*', ty)
         tz = recvbuf.find('Tz')
         endnum_tz = recvbuf.find('*', tz)
-        myForceVector[0] = round(float(recvbuf[(fx + 2):endnum_fx - 1]), 4)
-        myForceVector[1] = round(float(recvbuf[(fy + 2):endnum_fy - 1]), 4)
-        myForceVector[2] = round(float(recvbuf[(fz + 2):endnum_fz - 1]), 4)
-        myForceVector[3] = round(float(recvbuf[(tx + 2):endnum_tx - 1]), 4)
-        myForceVector[4] = round(float(recvbuf[(ty + 2):endnum_ty - 1]), 4)
-        myForceVector[5] = round(float(recvbuf[(tz + 2):endnum_tz - 1]), 4)
+
+        # processing data
+        myForceVector[0] = round(float(recvbuf[(fx + 2):endnum_fx - 1]), 3)
+        myForceVector[1] = round(float(recvbuf[(fy + 2):endnum_fy - 1]), 3)
+        myForceVector[2] = round(float(recvbuf[(fz + 2):endnum_fz - 1]), 3)
+        myForceVector[3] = round(float(recvbuf[(tx + 2):endnum_tx - 1]), 3)
+        myForceVector[4] = round(float(recvbuf[(ty + 2):endnum_ty - 1]), 3)
+        myForceVector[5] = round(float(recvbuf[(tz + 2):endnum_tz - 1]), 3)
+
         return myForceVector
 
     """calibration the force controller"""
@@ -523,7 +530,7 @@ def Test_calibrate():
     """Calibrate the force sensor"""
     # print('===================== Calibrate the force-moment sensor =========================')
     # done = Controller.CalibFCforce()
-
+    #
     # force = Controller.GetFCForce()
     # print(force)
     # print('=================================================================================')
@@ -539,8 +546,12 @@ def Test_calibrate():
 
     """used to search the initial position and euler; please note the other code"""
     # print('======================== Position and Force Information =========================')
-    # position, euler, T = Controller.GetCalibTool()
-    # Controller.Moveline(position + [0, 0, 1], euler + [0., 0., 0.], 5.)
+    position, euler, T = Controller.GetCalibTool()
+    print('position', position)
+    print('eulerang', euler)
+    Controller.MoveToolTo(position + [-0., 0, 100], euler + [0., 0., -0.1], 5.)
+    # force = Controller.GetFCForce()
+    # print(force)
     # T_z = Controller.EulerToMatrix(np.array([0., 0., 0.]), np.array([0., 0., -90]))
     # T_final = np.dot(T, T_z)
     #
@@ -567,10 +578,10 @@ def Test_calibrate():
 
     """move to last initial position and orientation"""
     # print('================= Move to the initial position and orientation ==================')
-    # Controller.MoveToolTo(Controller.start_insert_pos, Controller.start_insert_euler, 2)
-    # position, euler, T = Controller.GetCalibTool()
-    # print('position', position)
-    # print('euler', euler)
+    Controller.MoveToolTo(Controller.start_insert_pos, Controller.start_insert_euler, 5)
+    position, euler, T = Controller.GetCalibTool()
+    print('position', position)
+    print('euler', euler)
     # force = Controller.GetFCForce()
     # print('force', force)
     # print('=================================================================================')

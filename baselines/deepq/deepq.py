@@ -358,9 +358,9 @@ def learn(env,
             epoch_episode_states.append(cp.deepcopy(episode_states))
             epoch_episode_steps.append(cp.deepcopy(episode_step))
             episode_rewards.append(cp.deepcopy(episode_reward))
-            np.save('../data/episode_rewards' + save_path, episode_rewards)
-            np.save('../data/episode_state' + save_path, epoch_episode_states)
-            np.save('../data/episode_steps' + save_path, epoch_episode_steps)
+            # np.save('../data/episode_rewards' + save_path, episode_rewards)
+            # np.save('../data/episode_state' + save_path, epoch_episode_states)
+            # np.save('../data/episode_steps' + save_path, epoch_episode_steps)
             # replay_buffer.save_sample('../data/sample_data' + save_path)
 
         if model_saved:

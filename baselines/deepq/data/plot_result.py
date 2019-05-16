@@ -18,8 +18,8 @@ COLORS = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'purple'
         'brown', 'orange', 'teal', 'coral', 'lightblue', 'lime', 'lavender', 'turquoise',
         'darkgreen', 'tan', 'salmon', 'gold', 'lightpurple', 'darkred', 'darkblue']
 """================================================================================="""
-plt.rcParams['font.sans-serif']=['SimHei']
-plt.rcParams['axes.unicode_minus']=False
+# plt.rcParams['font.sans-serif']=['SimHei']
+# plt.rcParams['axes.unicode_minus']=False
 
 
 # plot the forces and moments
@@ -52,7 +52,7 @@ def plot_learning_force_and_moment(path_2, path_3, name):
     std_state = np.std(v_states, axis=0)
 
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    plt.figure(figsize=(24, 10), dpi=300)
+    plt.figure(figsize=(24, 10), dpi=100)
 
     # plt.tight_layout(pad=3, w_pad=1., h_pad=0.5)
     plt.subplots_adjust(left=0.08, bottom=0.10, right=0.98, top=0.88, wspace=0.4, hspace=0.23)
@@ -106,7 +106,7 @@ def plot_learning_force_and_moment(path_2, path_3, name):
     plt.xticks(fontsize=font_size)
     plt.yticks(fontsize=font_size)
 
-    plt.savefig('./figure/pdf/chinese_' + name + '.pdf')
+    # plt.savefig('./figure/pdf/chinese_' + name + '.pdf')
     plt.show()
 
 
@@ -358,6 +358,48 @@ def chinese_plot_compare_raw_data(path1, path2):
     # plt.show()
 
 
+def plot_comparision_hist(fuzzy_path, none_fuzzy_path):
+
+    fuzzy_data = np.load(fuzzy_path)
+    none_fuzzy_data = np.load(none_fuzzy_path)
+
+    print(len(fuzzy_data))
+    print(len(none_fuzzy_data))
+
+    fuzzy_steps = np.zeros(len(fuzzy_data))
+    none_fuzzy_steps = np.zeros(len(none_fuzzy_data))
+
+    for i in range(20):
+        fuzzy_steps[i] = len(fuzzy_data[80+i])*0.5
+
+    for j in range(20):
+        none_fuzzy_steps[j] = len(none_fuzzy_data[80+j])*0.5
+    print('fuzzy steps')
+    print(fuzzy_steps)
+    print('none fuzzy steps')
+    print(none_fuzzy_steps)
+
+    plt.figure(figsize=(10, 8), dpi=100)
+    plt.subplot(1, 1, 1)
+    plt.tight_layout(pad=4.8, w_pad=1., h_pad=1.)
+    plt.subplots_adjust(left=0.1, bottom=0.15, right=0.98, top=0.98, wspace=0.23, hspace=0.22)
+    plt.hist(none_fuzzy_steps[:20], bins=20, histtype="stepfilled", label='Prediction-based DQN')
+    plt.hist(fuzzy_steps[:20], bins=20, histtype="stepfilled", label='Normal DQN')
+
+    # plt.ylim(-5, 1)
+    plt.yticks(fontsize=28)
+    plt.xticks(fontsize=28)
+    plt.ylabel('Frequency', fontsize=28)
+    plt.xlabel('Episode time(s)', fontsize=28)
+    plt.grid(axis="y")
+    plt.legend(fontsize=28, loc='best')
+
+    plt.savefig('./figure/pdf/dqn_test_comparision_steps.pdf')
+    plt.savefig('./figure/jpg/dqn_test_comparision_steps.jpg')
+
+    plt.show()
+
+
 if __name__ == "__main__":
     # reward_1 = np.load('./episode_rewards.npy')
     # reward_2 = np.load('./episode_rewards_1.npy')
@@ -371,10 +413,14 @@ if __name__ == "__main__":
     # plot_learning_force_and_moment('./test_episode_state_fuzzy_final_new.npy', './test_episode_state_fuzzy_final_new.npy', 'dqn_none_fuzzy')
     # plot_learning_force_and_moment('./test_episode_state_none_fuzzy_final.npy', './test_episode_state_none_fuzzy_final.npy', 'dqn_none_fuzzy')
 
-    plot_chinese_learning_force_and_moment('episode_state_fuzzy_noise.npy', 'episode_state_fuzzy_noise.npy', 'dqn_none_fuzzy')
+    # plot_chinese_learning_force_and_moment('episode_state_fuzzy_noise.npy', 'episode_state_fuzzy_noise.npy', 'dqn_none_fuzzy')
     # plot_chinese_learning_force_and_moment('episode_state_none_fuzzy_noise.npy', 'episode_state_none_fuzzy_noise.npy', 'dqn_fuzzy')
-    # plot_learning_force_and_moment('episode_state_none_fuzzy_noise.npy', 'episode_state_none_fuzzy_noise.npy',
-    #                                        'dqn_fuzzy')
+    # plot_learning_force_and_moment('episode_state_fuzzy_noise.npy', 'episode_state_fuzzy_noise.npy', 'dqn_fuzzy')
+
+    plot_comparision_hist('episode_state_none_fuzzy_noise_final.npy', 'episode_state_fuzzy_noise_final.npy')
+    # plot_comparision_hist('episode_steps_none_fuzzy_noise_final.npy', 'episode_steps_fuzzy_noise_final.npy')
+    # plot_comparision_hist('test_episode_state_fuzzy_new.npy', 'test_episode_state_fuzzy_final_new.npy')
+    # plot_comparision_hist('test_episode_state_fuzzy_final_new.npy', 'test_episode_state_fuzzy_new.npy')
 
     #####
     # print(np.max(force, axis=0))

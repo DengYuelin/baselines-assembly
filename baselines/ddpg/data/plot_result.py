@@ -18,9 +18,9 @@ COLORS = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'purple'
         'brown', 'orange', 'teal', 'coral', 'lightblue', 'lime', 'lavender', 'turquoise',
         'darkgreen', 'tan', 'salmon', 'gold', 'lightpurple', 'darkred', 'darkblue']
 """================================================================================="""
-
-plt.rcParams['font.sans-serif']=['SimHei']
-plt.rcParams['axes.unicode_minus']=False
+#
+# plt.rcParams['font.sans-serif']=['SimHei']
+# plt.rcParams['axes.unicode_minus']=False
 
 
 def plot(result_path):
@@ -325,8 +325,8 @@ def plot_compare(fuzzy_path, none_fuzz_path):
     # plt.ylabel('Episode Reward', fontsize=20)
     # plt.xlabel('Episodes', fontsize=20)
 
-    plt.savefig('./figure/pdf/chinese_ddpg_episode_reward.pdf')
-    plt.savefig('./figure/jpg/chinese_ddpg_episode_reward.jpg')
+    # plt.savefig('./figure/pdf/chinese_ddpg_episode_reward.pdf')
+    # plt.savefig('./figure/jpg/chinese_ddpg_episode_reward.jpg')
 
     # plt.savefig('./figure/pdf/chinese_ddpg_episode_step.pdf')
     # plt.savefig('./figure/jpg/chinese_ddpg_episode_step.jpg')
@@ -424,6 +424,90 @@ def plot_continuous_data(path):
     plt.show()
 
 
+def plot_comparision_hist(fuzzy_path, none_fuzzy_path):
+
+    fuzzy_data = np.load(fuzzy_path)
+    none_fuzzy_data = np.load(none_fuzzy_path)
+    print(len(fuzzy_data))
+    print(len(none_fuzzy_data))
+
+    fuzzy_steps = np.zeros(len(fuzzy_data))
+    none_fuzzy_steps = np.zeros(len(none_fuzzy_data))
+
+    for i in range(len(fuzzy_data)):
+        fuzzy_steps[i] = len(fuzzy_data[i])*0.5
+
+    for j in range(len(none_fuzzy_data)):
+        none_fuzzy_steps[j] = len(none_fuzzy_data[j])*0.5
+
+    print('fuzzy steps')
+    print(fuzzy_steps)
+    print('none fuzzy steps')
+    print(none_fuzzy_steps)
+
+    plt.figure(figsize=(10, 8), dpi=100)
+    plt.subplot(1, 1, 1)
+    plt.tight_layout(pad=4.8, w_pad=1., h_pad=1.)
+    plt.subplots_adjust(left=0.1, bottom=0.15, right=0.98, top=0.98, wspace=0.23, hspace=0.22)
+    plt.hist(fuzzy_steps, bins=20, histtype="stepfilled", label='Prediction-based DDPG')
+    plt.hist(none_fuzzy_steps, bins=20, histtype="stepfilled", label='Normal DDPG')
+
+    # plt.ylim(-5, 1)
+    plt.yticks(fontsize=34)
+    plt.xticks(fontsize=34)
+    plt.ylabel('Frequency', fontsize=34)
+    plt.xlabel('Episode time(s)', fontsize=34)
+    plt.grid(axis="y")
+    plt.legend(fontsize=30, loc='best')
+
+    plt.savefig('./figure/pdf/ddpg_test_comparision_steps.pdf')
+    plt.savefig('./figure/jpg/ddpg_test_comparision_steps.jpg')
+
+    plt.show()
+
+
+def plot_comparision_hist_new(fuzzy_path, none_fuzzy_path):
+
+    fuzzy_data = np.load(fuzzy_path)
+    none_fuzzy_data = np.load(none_fuzzy_path)
+    print(len(fuzzy_data))
+    print(len(none_fuzzy_data))
+
+    fuzzy_steps = np.zeros(len(fuzzy_data))
+    none_fuzzy_steps = np.zeros(len(none_fuzzy_data))
+
+    for i in range(len(fuzzy_data)):
+        fuzzy_steps[i] = len(fuzzy_data[i])*0.5
+
+    for j in range(len(none_fuzzy_data)):
+        none_fuzzy_steps[j] = len(none_fuzzy_data[j])*0.5
+
+    print('fuzzy steps')
+    print(fuzzy_steps)
+    print('none fuzzy steps')
+    print(none_fuzzy_steps)
+
+    plt.figure(figsize=(10, 8), dpi=100)
+    plt.subplot(1, 1, 1)
+    plt.tight_layout(pad=4.8, w_pad=1., h_pad=1.)
+    plt.subplots_adjust(left=0.1, bottom=0.15, right=0.98, top=0.9, wspace=0.23, hspace=0.22)
+    plt.hist(fuzzy_steps, bins=20, histtype="stepfilled", label='Prediction-based DDPG')
+    plt.hist(none_fuzzy_steps, bins=20, histtype="stepfilled", label='Normal DDPG')
+
+    # plt.ylim(-5, 1)
+    plt.yticks(fontsize=34)
+    plt.xticks(fontsize=34)
+    plt.ylabel('Frequency', fontsize=34)
+    plt.xlabel('Episode time(s)', fontsize=34)
+    plt.grid(axis="y")
+    plt.legend(fontsize=30, loc='best')
+
+    plt.savefig('./figure/pdf/ddpg_test_comparision_steps.pdf')
+    plt.savefig('./figure/jpg/ddpg_test_comparision_steps.jpg')
+
+    plt.show()
+
+
 if __name__ == "__main__":
     # plot_campare('./episode_rewards_fuzzy.npy', './episode_rewards_none_fuzzy.npy')
     # plot_continuous_data('./search_force.npy')
@@ -432,7 +516,7 @@ if __name__ == "__main__":
     # plot_learning_force_and_moment('./train_states_none_fuzzy.npy', './train_states_none_fuzzy.npy', 'ddpg_none_fuzzy')
     # plot_learning_force_and_moment('./test_states_fuzzy.npy', './test_states_fuzzy.npy', 'ddpg_fuzzy')
 
-    plot_chinese_learning_force_and_moment('./train_states_none_fuzzy.npy', './train_states_none_fuzzy.npy', 'ddpg_none_fuzzy')
+    # plot_chinese_learning_force_and_moment('./train_states_none_fuzzy.npy', './train_states_none_fuzzy.npy', 'ddpg_none_fuzzy')
     # plot_chinese_learning_force_and_moment('./test_states_fuzzy.npy', './test_states_fuzzy.npy', 'ddpg_fuzzy')
 
     # reward = np.load('reward.npy')
@@ -447,15 +531,8 @@ if __name__ == "__main__":
     # new_plot_compare('none_step.npy', 'step.npy')
     # new_plot_compare('none_reward.npy', 'reward.npy')
 
-    #####
-    # print(np.max(force, axis=0))
-    # print(np.min(force, axis=0))
-    # print(np.max(state, axis=0))
-    # print(np.min(state, axis=0))
-    # plot('./search_state.npy')
-    # plot('./search_force.npy')
-    # reward = np.hstack([reward_1[:49], reward_2[:49], reward_3])
-    # plot_reward('./episode_rewards_100.npy')
+    # plot_comparision_hist('step.npy', 'none_step.npy')
+    # plot_comparision_hist('reward.npy', 'none_reward.npy')
+    plot_comparision_hist('./test_states_fuzzy.npy', './train_states_none_fuzzy.npy')
+    # print(len(np.load('./train_states_none_fuzzy.npy')[0]))
 
-    # state = np.load('second_states_fuzzy.npy')
-    # print(state[80:])

@@ -19,7 +19,7 @@ def main():
         network=models.mlp(num_hidden=64, num_layers=1),
         lr=1e-3,
         total_timesteps=5000,
-        total_episodes=100,
+        total_episodes=1,
         total_steps=50,
         target_network_update_freq=20,
         buffer_size=32,
@@ -28,14 +28,14 @@ def main():
         exploration_fraction=0.2,
         exploration_final_eps=0.01,
         print_freq=10,
-        param_noise=True,
-        save_path='_fuzzy_noise_final',
-        load_path='assembly_model_fuzzy_final.pkl'
+        param_noise=False,
+        save_path='_fuzzy_noise_final_test',
+        # load_path='assembly_model_fuzzy_final_test.pkl'
     )
     # load_path = 'assembly_model_fuzzy.pkl'
     # load_path = 'assembly_model.pkl'
     # print("Saving model to assembly_fuzzy_noise.pkl")
-    act.save("assembly_model_fuzzy_final.pkl")
+    act.save("assembly_model_fuzzy_final_test.pkl")
 
 
 if __name__ == '__main__':

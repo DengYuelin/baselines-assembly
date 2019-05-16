@@ -937,6 +937,7 @@ class env_continuous_search_control(object):
 class env_search_control(object):
 
     def __init__(self):
+
         """state and Action Parameters"""
         self.observation_dim = 12
         self.action_dim = 5
@@ -946,7 +947,8 @@ class env_search_control(object):
         self.reward = 1.
         self.add_noise = True
         self.pull_terminal = False
-        self.fuzzy_control = True
+        self.fuzzy_control = False
+
         self.step_max = 50
         self.step_max_pos = 15
         self.max_action = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
@@ -956,11 +958,11 @@ class env_search_control(object):
 
         """The desired force and moments :: get the force"""
         """action = [0, 1, 2, 3, 4]"""
-        self.desired_force_moment = np.array([[0, 0, -40, 0, 0, 0],
-                                             [0, 0, -40, 0, 0, 0],
-                                             [0, 0, -40, 0, 0, 0],
-                                             [0, 0, -40, 0, 0, 0],
-                                             [0, 0, -40, 0, 0, 0]])
+        self.desired_force_moment = np.array([[0, 0, -10, 0, 0, 0],
+                                             [0, 0, -10, 0, 0, 0],
+                                             [0, 0, -10, 0, 0, 0],
+                                             [0, 0, -10, 0, 0, 0],
+                                             [0, 0, -10, 0, 0, 0]])
 
         """The force and moment"""
         self.max_force_moment = [50, 5]
@@ -996,6 +998,7 @@ class env_search_control(object):
         if Position_0[2] < self.robot_control.start_pos[2]:
             print("++++++++++++++++++++++ The pegs need to be pull up !!! +++++++++++++++++++++++++")
             self.pull_peg_up()
+            self.robot_control.MoveToolTo(self.robot_control.start_pos, self.robot_control.start_euler, 5)
 
         """add randomness for the initial position and orietation"""
         state_noise = np.array([np.random.uniform(-0.3, 0.3), np.random.uniform(-0.3, 0.3),
@@ -1009,7 +1012,7 @@ class env_search_control(object):
             inital_euler = self.robot_control.start_euler
 
         """Move to the target point quickly and align with the holes"""
-        self.robot_control.MoveToolTo(initial_pos, inital_euler, 10)
+        self.robot_control.MoveToolTo(initial_pos, inital_euler, 5)
 
         """Get the max force and moment"""
         myForceVector = self.robot_control.GetFCForce()
@@ -1019,10 +1022,12 @@ class env_search_control(object):
         if safe_or_not is not True:
             exit("The pegs can't move for the exceed force!!!")
 
-        done = self.positon_control()
+        # done = self.positon_control()
+        done = True
 
-        print("++++++++++++++++++++++++++++ Reset Finished !!! +++++++++++++++++++++++++++++")
         self.state = self.get_state()
+        print("++++++++++++++++++++++++++++ Reset Finished !!! +++++++++++++++++++++++++++++")
+        print('initial state', self.state)
         return self.get_obs(self.state), done
 
     def step(self, action, step_num):
@@ -1067,25 +1072,33 @@ class env_search_control(object):
 
         movePosition = np.zeros(self.action_dim + 1)
 
-        movePosition[2] = setPosition[2]
         if action < 2:
             movePosition[action] = setPosition[action]
         else:
             movePosition[action + 1] = setEuler[action - 2]
 
+        # movePosition[2] = setPosition[2]
+        movePosition[2] = -0.3
+
+        print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        print('steps', step_num)
+        print('setPosition: ', movePosition[0:3])
+        print('setEuLer: ', movePosition[3:])
+        print('force', force)
+        print('position', state)
         """move robot"""
         if self.safe_or_not is False:
             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-            print('Max_force_moment:', force)
+            print('Max_force_moment:', str(force))
             self.reward = -1
             print("-------------------------------- The force is too large!!! -----------------------------")
         else:
             """Move and rotate the pegs"""
             self.robot_control.MoveToolTo(state[:3] + movePosition[:3], state[3:] + movePosition[3:], setVel)
-            print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-            print('setPosition: ', setPosition)
-            print('setEuLer: ', setEuler)
-            print('force', force)
+            # print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            # print('setPosition: ', setPosition)
+            # print('setEuLer: ', setEuler)
+            # print('force', force)
 
         if state[2] < self.robot_control.final_pos[2]:
             print("+++++++++++++++++++++++++++++ The Search Phase Finished!!! ++++++++++++++++++++++++++++")
@@ -1130,7 +1143,7 @@ class env_search_control(object):
             """Get the current position and euler"""
             Tw_p = np.dot(Tw_t, self.robot_control.T_tt)
 
-            pos_error[2] = self.robot_control.target_pos[2] - Tw_p[2, 3] - 130
+            pos_error[2] = self.robot_control.start_pos[2] - Tw_p[2, 3] - 130
 
             if step_num == 0:
                 setPostion = self.k_former * pos_error
