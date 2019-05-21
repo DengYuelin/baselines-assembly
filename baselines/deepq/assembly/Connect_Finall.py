@@ -689,7 +689,7 @@ def Test_calibrate():
     print('position', position)
     print('eulerang', euler)
     # # Controller.MovelineTo(Controller.start_pos, Controller.start_euler, 1.0)
-    # Controller.MovelineTo(position + [-0., 0., -200], euler + [-0., 0., -0.], 5.)
+    Controller.MovelineTo(position + [-0., 0., -200], euler + [-0., 0., -0.], 5.)
     #
     force = Controller.GetFCForce()
     print(force)

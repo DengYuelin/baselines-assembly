@@ -54,26 +54,44 @@ def plot_force_and_moment(path_2, path_3):
     plt.grid()
 
     plt.savefig('./figure/pdf/impedance_controller_single_episode_force_moment.pdf')
-    plt.savefig('./figure/pdf/impedance_controller_single_episode_position_orientation.pdf')
+    plt.savefig('./figure/jpg/impedance_controller_single_episode_force_moment.jpg')
 
     plt.show()
 
 
-def plot_six_action(path):
+def plot_six_action(path_2, path_3):
 
-    V_force = np.load(path)
-    print(V_force)
-    plt.figure(figsize=(24, 10), dpi=100)
+    font_size_new=30
+    V_force = np.load(path_2)
+    V_state = np.load(path_3)
 
-    plt.subplots_adjust(left=0.08, bottom=0.10, right=0.98, top=0.88, wspace=0.4, hspace=0.23)
+    plt.figure(figsize=(20, 10), dpi=300)
+    plt.tight_layout(pad=3, w_pad=1., h_pad=0.5)
+    plt.subplots_adjust(left=0.08, bottom=0.10, right=0.98, top=0.98, wspace=0.23, hspace=0.23)
+
     plt.subplot(1, 2, 1)
-    plt.title("Search Result of Force", fontsize=20)
-    plt.plot(V_force[:, :])
-    plt.xlabel("Steps", fontsize=20)
-    plt.ylabel("F(N)", fontsize=20)
-    plt.legend(labels=['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz'], loc='best', fontsize=20)
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
+    # plt.title("Search Result of Force", fontsize=font_size_new)
+    plt.plot(V_force[:, :], linewidth=2.75)
+    plt.xlabel("Steps", fontsize=font_size_new)
+    plt.ylabel("Action(mm/$\circ$)", fontsize=font_size_new)
+    plt.legend(labels=['$\Delta_x$', '$\Delta_y$', '$\Delta_z$', '$\Theta_x$', '$\Theta_y$', '$\Theta_z$'], loc='best', fontsize=font_size_new)
+    plt.xticks(fontsize=font_size_new)
+    plt.yticks(fontsize=font_size_new)
+    plt.grid()
+
+    plt.subplot(1, 2, 2)
+    # plt.title("Search Result of State", fontsize=28)
+    # plt.plot(V_state[:, 6:] - [539.8759, -39.7005, 193, 179.8834, 1.3056,  -5.4893])
+    plt.plot(V_state[:, 6:] - V_state[0, 6:], linewidth=2.75)
+    plt.xlabel("Steps", fontsize=font_size_new)
+    plt.ylabel("Position(mm) / Orientation$(\circ)$", fontsize=font_size_new)
+    plt.legend(labels=['$P_x$', '$P_y$', '$P_z$', '$O_x$', '$O_y$', '$O_z$'], loc='best', fontsize=font_size_new)
+    plt.xticks(fontsize=font_size_new)
+    plt.yticks(fontsize=font_size_new)
+    plt.grid()
+
+    plt.savefig('./figure/pdf/impedance_controller_single_episode_actions.pdf')
+    plt.savefig('./figure/jpg/impedance_controller_single_episode_actions.jpg')
 
     plt.show()
 
@@ -491,5 +509,5 @@ if __name__ == "__main__":
     # reward = np.hstack([reward_1, reward])
     # plot_reward(reward)
 
-    plot_force_and_moment('impedance_controller_episode_force_pose.npy', 'impedance_controller_episode_force_pose.npy')
-    # plot_six_action('impedance_controller_episode_action.npy')
+    plot_force_and_moment('impedance_controller_episode_force_pose_2.npy', 'impedance_controller_episode_force_pose_2.npy')
+    plot_six_action('impedance_controller_episode_action_2.npy', 'impedance_controller_episode_force_pose_2.npy')

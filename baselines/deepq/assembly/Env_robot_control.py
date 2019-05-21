@@ -623,7 +623,9 @@ class env_insert_control(object):
         else:
             setPosition = self.last_setPosition + self.kp * (force_error[:3] - self.last_force_error[:3]) + \
                           self.kd * (force_error[:3] - 2 * self.last_force_error[:3] + self.former_force_error[:3])
-            setPosition[2] = min(0.2, setPosition[2])
+            setPosition[2] = np.clip(setPosition[2], -0.2, 0.1)
+            setPosition[0] = np.clip(setPosition[0], -0.1, 0.1)
+            setPosition[1] = np.clip(setPosition[1], -0.1, 0.1)
             self.last_setPosition = setPosition
             self.former_force_error = self.last_force_error
             self.last_force_error = force_error

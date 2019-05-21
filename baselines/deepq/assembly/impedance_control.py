@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument('--source', type=str, choices=['device', 'file'])
     parser.add_argument('--path', type=str)
     parser.add_argument('--alpha', type=float, default=0.005)
-    parser.add_argument('--episodes', type=int, default=100)
+    parser.add_argument('--episodes', type=int, default=150)
     parser.add_argument('--steps', type=int, default=100)
     parser.add_argument('--memory_size', type=int, default=3000)
     parser.add_argument('--data-file', type=str)
@@ -52,8 +52,8 @@ for i in range(args['episodes']):
     action[3:] = setEuler
     epoch_action.append(cp.deepcopy(action))
 
-    np.save('../data/impedance_controller_episode_force_pose', epoch_force_pose)
-    np.save('../data/impedance_controller_episode_action', epoch_action)
+    np.save('../data/impedance_controller_episode_force_pose_2', epoch_force_pose)
+    np.save('../data/impedance_controller_episode_action_2', epoch_action)
 
     if done:
         env.pull_peg_up()
