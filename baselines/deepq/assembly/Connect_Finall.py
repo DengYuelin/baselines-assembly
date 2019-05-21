@@ -57,12 +57,12 @@ class Robot_Control(object):
                               [0, 0, 0, 1]])
 
         # target position and euler
-        self.target_pos = np.array([539.89459, -39.68952, 191.5599])
-        self.target_euler = np.array([179.88302, 1.29705, 1.01166])
+        # self.target_pos = np.array([539.89459, -39.68952, 191.5599])
+        # self.target_euler = np.array([179.88302, 1.29705, 1.01166])
 
         # for prediction
-        # self.target_pos = np.array([539.89459, -39.68952, 190.5599])
-        # self.target_euler = np.array([179.88302, 1.29705, 1.01166])
+        self.target_pos = np.array([539.89459, -39.68952, 191.5599])
+        self.target_euler = np.array([179.4948,  0.8913,  -5.9635])
 
         # final position and euler
         self.final_pos = np.array([539.88427, -38.68679, 190.03184])
@@ -72,15 +72,25 @@ class Robot_Control(object):
         # self.start_pos = np.array([539.88842, -39.70193, 205.85147])
         # self.start_euler = np.array([179.88302, 1.30399, 1.00945])
 
-        self.start_pos = np.array([539.8759, -39.7005, 194.8086])
-        self.start_euler = np.array([179.8834, 1.3056,  -5.4893])
-
+        # setting for
         self.set_pos = np.array([550.0107, -104.2418, 227.8422])
         self.set_euler = np.array([179.88302, 1.30399, 1.00945])
 
-        self.start_insert_pos = np.array([539.8759, -39.7005, 193.8086])
-        self.start_insert_euler = np.array([179.8834, 1.3056,  -5.4893])
+        self.set_initial_pos = np.array([539.8759, -39.7005, 200.5376])
+        self.set_initial_euler = np.array([179.4948, 0.8913, -5.9635])
 
+        # setting for search
+        self.set_search_pos = np.array([539.8759, -39.7005, 193.8086])
+        self.set_search_euler = np.array([179.8834, 1.3056,  -5.4893])
+
+        # setting for insertion
+        self.set_insert_pos = np.array([539.8549, -39.466, 190.5095])
+        self.set_insert_euler = np.array([179.4898, 0.8922, -6.541])
+
+        self.set_insert_goal_pos = np.array([539.8549, -39.466, 170.])
+        self.set_insert_goal_euler = np.array([179.4898, 0.8922, -6.541])
+
+        # setting for connect
         self.Connect()
 
     """Connect with robot"""
@@ -90,6 +100,143 @@ class Robot_Control(object):
     """Disconnect"""
     def DisConnect(self):
         self.s.close()
+
+    """move line to target"""
+    def MovelineTo(self, position, euler, vel):
+
+        Q = self.EulerToQuternion(euler)
+        swrite = '#SetTarget_1 ' + '*' + '[' + str('%0.3f' % position[0]) + ',' + str('%0.3f' % position[1]) + ',' + str(
+            '%0.3f' % position[2]) + ']' + '!' + '[' + str('%0.3f' % Q[0]) + ',' + str('%0.3f' % Q[1]) + \
+                 ',' + str('%0.3f' % Q[2]) + ',' + str('%0.3f' % Q[3]) + ']@'
+        # print(swrite)
+        self.s.send(swrite.encode())
+
+        # Wait the message of the finish signal of the motion work
+        recvbuf = ''
+        time_out = 0
+        while recvbuf.find('MotionFinish') == -1:
+            recvbuf = self.s.recv(2048).decode()
+            time_out += 1
+            # time.sleep(0.01)
+        print('--------------Move Finish!!!!-------------------\n')
+
+    """require the position and eluer current"""
+    def GetCalibTool(self):
+
+        recvbuf = ''
+        Euler = np.zeros(3, dtype=float)
+        Position = np.zeros(3, dtype=float)
+
+        self.s.send('#GetCalibPar@'.encode())
+        time.sleep(0.01)
+        time_out = 0
+        # while len(recvbuf) < 76 and time_out < 30:
+        #     recvbuf += self.s.recv(2048).decode()
+        #     time_out += 1
+        #     time.sleep(0.01)
+        while time_out < 6:
+            recvbuf += self.s.recv(2048).decode()
+            time_out += 1
+            time.sleep(0.01)
+
+        sendover = ''
+        time_out = 0
+        while sendover.find('Send Over!') == -1 and time_out < 10:
+            sendover = self.s.recv(2048).decode()
+            time.sleep(0.01)
+            time_out += 1
+        if time_out < 10:
+            pass
+        else:
+            print('Position Send Fail for Time Out!\n')
+
+        # if time_out >= 30:
+        #     print('Get Tool Fail Time Out!\n')
+        #     result = False
+        #     return result
+
+        px = recvbuf.find('PX')
+        endnum_px = recvbuf.find('*', px)
+        py = recvbuf.find('PY')
+        endnum_py = recvbuf.find('*', py)
+        pz = recvbuf.find('PZ')
+        endnum_pz = recvbuf.find('*', pz)
+        ex = recvbuf.find('EX')
+        endnum_ex = recvbuf.find('*', ex)
+        ey = recvbuf.find('EY')
+        endnum_ey = recvbuf.find('*', ey)
+        ez = recvbuf.find('EZ')
+        endnum_ez = recvbuf.find('*', ez)
+
+        Position[0] = round(float(recvbuf[(px + 2):endnum_px - 1]), 4)
+        Position[1] = round(float(recvbuf[(py + 2):endnum_py - 1]), 4)
+        Position[2] = round(float(recvbuf[(pz + 2):endnum_pz - 1]), 4)
+        Euler[0] = round(float(recvbuf[(ex + 2):endnum_ex - 1]), 4)
+        Euler[1] = round(float(recvbuf[(ey + 2):endnum_ey - 1]), 4)
+        Euler[2] = round(float(recvbuf[(ez + 2):endnum_ez - 1]), 4)
+        T = self.EulerToMatrix(Position, Euler)
+
+        return Position, Euler, T
+
+    """require the force and moment"""
+    def GetFCForce(self):
+
+        recvbuf = ''
+        myForceVector = np.zeros(6, dtype=float)
+        self.s.send('#GetFCForce@'.encode())
+        time_out = 0
+
+        # while len(recvbuf) < 76 and time_out < 30:
+        #     recvbuf += self.s.recv(2048).decode()
+        #     time_out += 1
+        #     time.sleep(0.01)
+        #     print(recvbuf)
+
+        while time_out < 6:
+            recvbuf += self.s.recv(2048).decode()
+            time_out += 1
+            time.sleep(0.01)
+
+        sendover = ''
+        time_out = 0
+        while sendover.find('Send Over!') == -1 and time_out < 10:
+            sendover = self.s.recv(2048).decode()
+            time.sleep(0.01)
+            time_out += 1
+        if time_out < 10:
+            pass
+        else:
+            print('Force Send Fail for Time Out!\n')
+
+        # if time_out < 30:
+        #     print('Get Force Success!!!')
+        # else:
+        #     result = False
+        #     print('Get Force Fail!\n')
+        #     return result
+
+        fx = recvbuf.find('Fx')
+        endnum_fx = recvbuf.find('*', fx)
+        fy = recvbuf.find('Fy')
+        endnum_fy = recvbuf.find('*', fy)
+        fz = recvbuf.find('Fz')
+        endnum_fz = recvbuf.find('*', fz)
+        tx = recvbuf.find('Tx')
+        endnum_tx = recvbuf.find('*', tx)
+        ty = recvbuf.find('Ty')
+        endnum_ty = recvbuf.find('*', ty)
+        tz = recvbuf.find('Tz')
+        endnum_tz = recvbuf.find('*', tz)
+
+        # processing data
+        myForceVector[0] = round(float(recvbuf[(fx + 2):endnum_fx - 1]), 3)
+        myForceVector[1] = round(float(recvbuf[(fy + 2):endnum_fy - 1]), 3)
+        myForceVector[2] = round(float(recvbuf[(fz + 2):endnum_fz - 1]), 3)
+        myForceVector[3] = round(float(recvbuf[(tx + 2):endnum_tx - 1]), 3)
+        myForceVector[4] = round(float(recvbuf[(ty + 2):endnum_ty - 1]), 3)
+        myForceVector[5] = round(float(recvbuf[(tz + 2):endnum_tz - 1]), 3)
+
+        return myForceVector
 
     """move line to the target"""
     def MoveToolTo(self, position, euler, vel):
@@ -198,13 +345,87 @@ class Robot_Control(object):
         else:
             print('Move Tool Fail for Time Out!\n')
 
-    """move line to target"""
-    def MovelineTo(self, T, pos_offset, euler_offset, vel):
+    """calibration the force controller"""
+    def CalibFCforce(self):
+        swrite = '#CalibFCForce@"'
+        self.s.send(swrite.encode())
+        CalibResult = True
+        return CalibResult
 
-        T_rotate = self.EulerToMatrix(pos_offset, euler_offset)
-        T_final = np.dot(T, T_rotate)
-        pos_final, euler_final = self.MatrixToEuler(T_final)
-        self.MoveToolTo(pos_final, euler_final, vel)
+    """Euler to matrix"""
+    def EulerToMatrix(self, position, euler):
+        euler = euler * np.pi/180
+        Wx = euler[0]
+        Wy = euler[1]
+        Wz = euler[2]
+        Mz = np.array([[np.cos(Wz), -np.sin(Wz), 0, 0],
+                       [np.sin(Wz), np.cos(Wz), 0, 0],
+                       [0, 0, 1, 0],
+                       [0, 0, 0, 1]])
+        My = np.array([[np.cos(Wy), 0, np.sin(Wy), 0],
+                       [0, 1, 0, 0],
+                       [-np.sin(Wy), 0, np.cos(Wy), 0],
+                       [0, 0, 0, 1]])
+        Mx = np.array([[1, 0, 0, 0],
+                       [0, np.cos(Wx), -np.sin(Wx), 0],
+                       [0, np.sin(Wx), np.cos(Wx), 0],
+                       [0, 0, 0, 1]])
+        Matrix_three = np.dot(np.dot(Mz, My), Mx)  # Mz * My * Mx
+        Unit = np.array([[1, 0, 0, position[0]],
+                         [0, 1, 0, position[1]],
+                         [0, 0, 1, position[2]],
+                         [0, 0, 0, 1]])
+        Matrix = np.dot(Unit, Matrix_three)
+        return Matrix
+
+    """Euler to Quternion"""
+    def EulerToQuternion(self, euler):
+        euler = euler * np.pi/180
+        x1 = np.cos(euler[1]) * np.cos(euler[2])
+        x2 = np.cos(euler[1]) * np.sin(euler[2])
+        x3 = -np.sin(euler[1])
+
+        y1 = -np.cos(euler[0]) * np.sin(euler[2]) + np.sin(euler[0]) * np.sin(euler[1]) * np.cos(euler[2])
+        y2 = np.cos(euler[0]) * np.cos(euler[2]) + np.sin(euler[0]) * np.sin(euler[1]) * np.sin(euler[2])
+        y3 = np.sin(euler[0]) * np.cos(euler[1])
+
+        z1 = np.sin(euler[0]) * np.sin(euler[2]) + np.cos(euler[0]) * np.sin(euler[1]) * np.cos(euler[2])
+        z2 = -np.sin(euler[0]) * np.cos(euler[2]) + np.cos(euler[0]) * np.sin(euler[1]) * np.sin(euler[2])
+        z3 = np.cos(euler[0]) * np.cos(euler[1])
+
+        Q = np.zeros(4, dtype=float)
+        Q[0] = np.sqrt(x1 + y2 + z3 + 1)/2
+        if y3 > z2:
+            Q[1] = np.sqrt(x1 - y2 - z3 + 1)/2
+        else:
+            Q[1] = -np.sqrt(x1 - y2 - z3 + 1)/2
+
+        if z1 > x3:
+            Q[2] = np.sqrt(y2 - x1 - z3 + 1)/2
+        else:
+            Q[2] = -np.sqrt(y2 - x1 - z3 + 1)/2
+
+        if x2 > y1:
+            Q[3] = np.sqrt(z3 - x1 - y2 + 1)/2
+        else:
+            Q[3] = -np.sqrt(z3 - x1 - y2 + 1)/2
+        return Q
+
+    """calculate the traslation Matrix T with the position and euler"""
+    def MatrixToEuler(self, T):
+        Position = np.zeros(3, dtype=float)
+        Position[0] = T[0, 3]
+        Position[1] = T[1, 3]
+        Position[2] = T[2, 3]
+
+        Euler = np.zeros(3, dtype=float)
+        Euler[2] = np.arctan2(T[1, 0], T[0, 0])
+        Euler[1] = np.arctan2(-T[2, 0], np.cos(Euler[2]) * T[0, 0] + np.sin(Euler[2]) * T[1, 0])
+        Euler[0] = np.arctan2(np.sin(Euler[2]) * T[0, 2] - np.cos(Euler[2]) * T[1, 2],
+                         -np.sin(Euler[2]) * T[0, 1] + np.cos(Euler[2]) * T[1, 1])
+
+        Euler = Euler * 180 / np.pi
+        return Position, Euler
 
     """move line directly to the target"""
     def Moveline(self, position, euler, vel):
@@ -353,172 +574,90 @@ class Robot_Control(object):
         self.MoveToolTo(position_t2, eulerang_t2, 20)
         return position_t2, eulerang_t2
 
-    """require the position and eluer current"""
-    def GetCalibTool(self):
-        recvbuf = ''
-        Euler = np.zeros(3, dtype=float)
-        Position = np.zeros(3, dtype=float)
-
-        self.s.send('#GetCalibPar@'.encode())
-        time.sleep(0.01)
-
-        time_out = 0
-        while len(recvbuf) < 76 and time_out < 30:
-            recvbuf += self.s.recv(2048).decode()
-            time_out += 1
-            time.sleep(0.01)
-
-        if time_out >= 30:
-            print('Get Tool Fail Time Out!\n')
-            result = False
-            return result
-
-        px = recvbuf.find('PX')
-        endnum_px = recvbuf.find('*', px)
-        py = recvbuf.find('PY')
-        endnum_py = recvbuf.find('*', py)
-        pz = recvbuf.find('PZ')
-        endnum_pz = recvbuf.find('*', pz)
-        ex = recvbuf.find('EX')
-        endnum_ex = recvbuf.find('*', ex)
-        ey = recvbuf.find('EY')
-        endnum_ey = recvbuf.find('*', ey)
-        ez = recvbuf.find('EZ')
-        endnum_ez = recvbuf.find('*', ez)
-
-        Position[0] = round(float(recvbuf[(px + 2):endnum_px - 1]), 4)
-        Position[1] = round(float(recvbuf[(py + 2):endnum_py - 1]), 4)
-        Position[2] = round(float(recvbuf[(pz + 2):endnum_pz - 1]), 4)
-        Euler[0] = round(float(recvbuf[(ex + 2):endnum_ex - 1]), 4)
-        Euler[1] = round(float(recvbuf[(ey + 2):endnum_ey - 1]), 4)
-        Euler[2] = round(float(recvbuf[(ez + 2):endnum_ez - 1]), 4)
-        T = self.EulerToMatrix(Position, Euler)
-        return Position, Euler, T
-
-    """require the force and moment"""
-    def GetFCForce(self):
-        recvbuf = ''
-        myForceVector = np.zeros(6, dtype=float)
-        self.s.send('#GetFCForce@'.encode())
-        time_out = 0
-        time.sleep(0.01)
-        while len(recvbuf) < 76 and time_out < 30:
-            recvbuf += self.s.recv(2048).decode()
-            time_out += 1
-            time.sleep(0.01)
-        print('time_out', time_out)
-
-        if time_out < 30:
-            print('Get Force Success!!!')
-        else:
-            result = False
-            print('Get Force Fail!\n')
-            return result
-
-        fx = recvbuf.find('Fx')
-        endnum_fx = recvbuf.find('*', fx)
-        fy = recvbuf.find('Fy')
-        endnum_fy = recvbuf.find('*', fy)
-        fz = recvbuf.find('Fz')
-        endnum_fz = recvbuf.find('*', fz)
-        tx = recvbuf.find('Tx')
-        endnum_tx = recvbuf.find('*', tx)
-        ty = recvbuf.find('Ty')
-        endnum_ty = recvbuf.find('*', ty)
-        tz = recvbuf.find('Tz')
-        endnum_tz = recvbuf.find('*', tz)
-
-        # processing data
-        myForceVector[0] = round(float(recvbuf[(fx + 2):endnum_fx - 1]), 3)
-        myForceVector[1] = round(float(recvbuf[(fy + 2):endnum_fy - 1]), 3)
-        myForceVector[2] = round(float(recvbuf[(fz + 2):endnum_fz - 1]), 3)
-        myForceVector[3] = round(float(recvbuf[(tx + 2):endnum_tx - 1]), 3)
-        myForceVector[4] = round(float(recvbuf[(ty + 2):endnum_ty - 1]), 3)
-        myForceVector[5] = round(float(recvbuf[(tz + 2):endnum_tz - 1]), 3)
-
-        return myForceVector
-
-    """calibration the force controller"""
-    def CalibFCforce(self):
-        swrite = '#CalibFCForce@"'
-        self.s.send(swrite.encode())
-        CalibResult = True
-        return CalibResult
-
-    """Euler to matrix"""
-    def EulerToMatrix(self, position, euler):
-        euler = euler * np.pi/180
-        Wx = euler[0]
-        Wy = euler[1]
-        Wz = euler[2]
-        Mz = np.array([[np.cos(Wz), -np.sin(Wz), 0, 0],
-                       [np.sin(Wz), np.cos(Wz), 0, 0],
-                       [0, 0, 1, 0],
-                       [0, 0, 0, 1]])
-        My = np.array([[np.cos(Wy), 0, np.sin(Wy), 0],
-                       [0, 1, 0, 0],
-                       [-np.sin(Wy), 0, np.cos(Wy), 0],
-                       [0, 0, 0, 1]])
-        Mx = np.array([[1, 0, 0, 0],
-                       [0, np.cos(Wx), -np.sin(Wx), 0],
-                       [0, np.sin(Wx), np.cos(Wx), 0],
-                       [0, 0, 0, 1]])
-        Matrix_three = np.dot(np.dot(Mz, My), Mx)  # Mz * My * Mx
-        Unit = np.array([[1, 0, 0, position[0]],
-                         [0, 1, 0, position[1]],
-                         [0, 0, 1, position[2]],
-                         [0, 0, 0, 1]])
-        Matrix = np.dot(Unit, Matrix_three)
-        return Matrix
-
-    """Euler to Quternion"""
-    def EulerToQuternion(self, euler):
-        euler = euler * np.pi/180
-        x1 = np.cos(euler[1]) * np.cos(euler[2])
-        x2 = np.cos(euler[1]) * np.sin(euler[2])
-        x3 = -np.sin(euler[1])
-
-        y1 = -np.cos(euler[0]) * np.sin(euler[2]) + np.sin(euler[0]) * np.sin(euler[1]) * np.cos(euler[2])
-        y2 = np.cos(euler[0]) * np.cos(euler[2]) + np.sin(euler[0]) * np.sin(euler[1]) * np.sin(euler[2])
-        y3 = np.sin(euler[0]) * np.cos(euler[1])
-
-        z1 = np.sin(euler[0]) * np.sin(euler[2]) + np.cos(euler[0]) * np.sin(euler[1]) * np.cos(euler[2])
-        z2 = -np.sin(euler[0]) * np.cos(euler[2]) + np.cos(euler[0]) * np.sin(euler[1]) * np.sin(euler[2])
-        z3 = np.cos(euler[0]) * np.cos(euler[1])
-
-        Q = np.zeros(4, dtype=float)
-        Q[0] = np.sqrt(x1 + y2 + z3 + 1)/2
-        if y3 > z2:
-            Q[1] = np.sqrt(x1 - y2 - z3 + 1)/2
-        else:
-            Q[1] = -np.sqrt(x1 - y2 - z3 + 1)/2
-
-        if z1 > x3:
-            Q[2] = np.sqrt(y2 - x1 - z3 + 1)/2
-        else:
-            Q[2] = -np.sqrt(y2 - x1 - z3 + 1)/2
-
-        if x2 > y1:
-            Q[3] = np.sqrt(z3 - x1 - y2 + 1)/2
-        else:
-            Q[3] = -np.sqrt(z3 - x1 - y2 + 1)/2
-        return Q
-
-    """calculate the traslation Matrix T with the position and euler"""
-    def MatrixToEuler(self, T):
-        Position = np.zeros(3, dtype=float)
-        Position[0] = T[0, 3]
-        Position[1] = T[1, 3]
-        Position[2] = T[2, 3]
-
-        Euler = np.zeros(3, dtype=float)
-        Euler[2] = np.arctan2(T[1, 0], T[0, 0])
-        Euler[1] = np.arctan2(-T[2, 0], np.cos(Euler[2]) * T[0, 0] + np.sin(Euler[2]) * T[1, 0])
-        Euler[0] = np.arctan2(np.sin(Euler[2]) * T[0, 2] - np.cos(Euler[2]) * T[1, 2],
-                         -np.sin(Euler[2]) * T[0, 1] + np.cos(Euler[2]) * T[1, 1])
-
-        Euler = Euler * 180 / np.pi
-        return Position, Euler
+    # """require the position and eluer current"""
+    # def GetCalibTool(self):
+    #     recvbuf = ''
+    #     Euler = np.zeros(3, dtype=float)
+    #     Position = np.zeros(3, dtype=float)
+    #
+    #     self.s.send('#GetCalibPar@'.encode())
+    #     time.sleep(0.01)
+    #
+    #     time_out = 0
+    #     while len(recvbuf) < 76 and time_out < 30:
+    #         recvbuf += self.s.recv(2048).decode()
+    #         time_out += 1
+    #         time.sleep(0.01)
+    #
+    #     if time_out >= 30:
+    #         print('Get Tool Fail Time Out!\n')
+    #         result = False
+    #         return result
+    #
+    #     px = recvbuf.find('PX')
+    #     endnum_px = recvbuf.find('*', px)
+    #     py = recvbuf.find('PY')
+    #     endnum_py = recvbuf.find('*', py)
+    #     pz = recvbuf.find('PZ')
+    #     endnum_pz = recvbuf.find('*', pz)
+    #     ex = recvbuf.find('EX')
+    #     endnum_ex = recvbuf.find('*', ex)
+    #     ey = recvbuf.find('EY')
+    #     endnum_ey = recvbuf.find('*', ey)
+    #     ez = recvbuf.find('EZ')
+    #     endnum_ez = recvbuf.find('*', ez)
+    #
+    #     Position[0] = round(float(recvbuf[(px + 2):endnum_px - 1]), 4)
+    #     Position[1] = round(float(recvbuf[(py + 2):endnum_py - 1]), 4)
+    #     Position[2] = round(float(recvbuf[(pz + 2):endnum_pz - 1]), 4)
+    #     Euler[0] = round(float(recvbuf[(ex + 2):endnum_ex - 1]), 4)
+    #     Euler[1] = round(float(recvbuf[(ey + 2):endnum_ey - 1]), 4)
+    #     Euler[2] = round(float(recvbuf[(ez + 2):endnum_ez - 1]), 4)
+    #     T = self.EulerToMatrix(Position, Euler)
+    #     return Position, Euler, T
+    #
+    # """require the force and moment"""
+    # def GetFCForce(self):
+    #     recvbuf = ''
+    #     myForceVector = np.zeros(6, dtype=float)
+    #     self.s.send('#GetFCForce@'.encode())
+    #     time_out = 0
+    #     time.sleep(0.01)
+    #     while len(recvbuf) < 76 and time_out < 30:
+    #         recvbuf += self.s.recv(2048).decode()
+    #         time_out += 1
+    #         time.sleep(0.01)
+    #     print('time_out', time_out)
+    #
+    #     if time_out < 30:
+    #         print('Get Force Success!!!')
+    #     else:
+    #         result = False
+    #         print('Get Force Fail!\n')
+    #         return result
+    #
+    #     fx = recvbuf.find('Fx')
+    #     endnum_fx = recvbuf.find('*', fx)
+    #     fy = recvbuf.find('Fy')
+    #     endnum_fy = recvbuf.find('*', fy)
+    #     fz = recvbuf.find('Fz')
+    #     endnum_fz = recvbuf.find('*', fz)
+    #     tx = recvbuf.find('Tx')
+    #     endnum_tx = recvbuf.find('*', tx)
+    #     ty = recvbuf.find('Ty')
+    #     endnum_ty = recvbuf.find('*', ty)
+    #     tz = recvbuf.find('Tz')
+    #     endnum_tz = recvbuf.find('*', tz)
+    #
+    #     # processing data
+    #     myForceVector[0] = round(float(recvbuf[(fx + 2):endnum_fx - 1]), 3)
+    #     myForceVector[1] = round(float(recvbuf[(fy + 2):endnum_fy - 1]), 3)
+    #     myForceVector[2] = round(float(recvbuf[(fz + 2):endnum_fz - 1]), 3)
+    #     myForceVector[3] = round(float(recvbuf[(tx + 2):endnum_tx - 1]), 3)
+    #     myForceVector[4] = round(float(recvbuf[(ty + 2):endnum_ty - 1]), 3)
+    #     myForceVector[5] = round(float(recvbuf[(tz + 2):endnum_tz - 1]), 3)
+    #
+    #     return myForceVector
 
 
 """calibrate the force sensor and moment"""
@@ -545,13 +684,18 @@ def Test_calibrate():
     # print('=================================================================================')
 
     """used to search the initial position and euler; please note the other code"""
-    # print('======================== Position and Force Information =========================')
+    print('======================== Position and Force Information =========================')
     position, euler, T = Controller.GetCalibTool()
     print('position', position)
     print('eulerang', euler)
-    Controller.MoveToolTo(position + [-0., 0, 100], euler + [0., 0., -0.1], 5.)
-    # force = Controller.GetFCForce()
-    # print(force)
+    # # Controller.MovelineTo(Controller.start_pos, Controller.start_euler, 1.0)
+    # Controller.MovelineTo(position + [-0., 0., -200], euler + [-0., 0., -0.], 5.)
+    #
+    force = Controller.GetFCForce()
+    print(force)
+    # position, euler, T = Controller.GetCalibTool()
+    # print('position', position)
+    # print('eulerang', euler)
     # T_z = Controller.EulerToMatrix(np.array([0., 0., 0.]), np.array([0., 0., -90]))
     # T_final = np.dot(T, T_z)
     #
@@ -578,10 +722,10 @@ def Test_calibrate():
 
     """move to last initial position and orientation"""
     # print('================= Move to the initial position and orientation ==================')
-    Controller.MoveToolTo(Controller.start_insert_pos, Controller.start_insert_euler, 5)
-    position, euler, T = Controller.GetCalibTool()
-    print('position', position)
-    print('euler', euler)
+    # Controller.MoveToolTo(Controller.start_insert_pos, Controller.start_insert_euler, 5)
+    # position, euler, T = Controller.GetCalibTool()
+    # print('position', position)
+    # print('euler', euler)
     # force = Controller.GetFCForce()
     # print('force', force)
     # print('=================================================================================')

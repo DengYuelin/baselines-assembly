@@ -22,7 +22,62 @@ COLORS = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'purple'
 # plt.rcParams['axes.unicode_minus']=False
 
 
-# plot the forces and moments
+def plot_force_and_moment(path_2, path_3):
+
+    font_size_new=30
+    V_force = np.load(path_2)
+    V_state = np.load(path_3)
+
+    plt.figure(figsize=(20, 10), dpi=300)
+    plt.tight_layout(pad=3, w_pad=1., h_pad=0.5)
+    plt.subplots_adjust(left=0.08, bottom=0.10, right=0.98, top=0.98, wspace=0.23, hspace=0.23)
+
+    plt.subplot(1, 2, 1)
+    # plt.title("Forces and Moments", fontsize=28)
+    plt.plot(V_force[:, : 6], linewidth=2.75)
+    plt.xlabel("Steps", fontsize=font_size_new)
+    plt.ylabel("Forces(N) / Moments(10XNm)", fontsize=font_size_new)
+    plt.legend(labels=['$F_x$', '$F_y$', '$F_z$', '$M_x$', '$M_y$', '$M_z$'], loc='best', fontsize=font_size_new)
+    plt.xticks(fontsize=font_size_new)
+    plt.yticks(fontsize=font_size_new)
+    plt.grid()
+
+    plt.subplot(1, 2, 2)
+    # plt.title("Search Result of State", fontsize=28)
+    # plt.plot(V_state[:, 6:] - [539.8759, -39.7005, 193, 179.8834, 1.3056,  -5.4893])
+    plt.plot(V_state[:, 6:] - V_state[0, 6:], linewidth=2.75)
+    plt.xlabel("Steps", fontsize=font_size_new)
+    plt.ylabel("Position(mm) / Orientation$(\circ)$", fontsize=font_size_new)
+    plt.legend(labels=['$P_x$', '$P_y$', '$P_z$', '$O_x$', '$O_y$', '$O_z$'], loc='best', fontsize=font_size_new)
+    plt.xticks(fontsize=font_size_new)
+    plt.yticks(fontsize=font_size_new)
+    plt.grid()
+
+    plt.savefig('./figure/pdf/impedance_controller_single_episode_force_moment.pdf')
+    plt.savefig('./figure/pdf/impedance_controller_single_episode_position_orientation.pdf')
+
+    plt.show()
+
+
+def plot_six_action(path):
+
+    V_force = np.load(path)
+    print(V_force)
+    plt.figure(figsize=(24, 10), dpi=100)
+
+    plt.subplots_adjust(left=0.08, bottom=0.10, right=0.98, top=0.88, wspace=0.4, hspace=0.23)
+    plt.subplot(1, 2, 1)
+    plt.title("Search Result of Force", fontsize=20)
+    plt.plot(V_force[:, :])
+    plt.xlabel("Steps", fontsize=20)
+    plt.ylabel("F(N)", fontsize=20)
+    plt.legend(labels=['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz'], loc='best', fontsize=20)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+
+    plt.show()
+
+
 def plot_learning_force_and_moment(path_2, path_3, name):
 
     font_size = 34
@@ -417,7 +472,7 @@ if __name__ == "__main__":
     # plot_chinese_learning_force_and_moment('episode_state_none_fuzzy_noise.npy', 'episode_state_none_fuzzy_noise.npy', 'dqn_fuzzy')
     # plot_learning_force_and_moment('episode_state_fuzzy_noise.npy', 'episode_state_fuzzy_noise.npy', 'dqn_fuzzy')
 
-    plot_comparision_hist('episode_state_none_fuzzy_noise_final.npy', 'episode_state_fuzzy_noise_final.npy')
+    # plot_comparision_hist('episode_state_none_fuzzy_noise_final.npy', 'episode_state_fuzzy_noise_final.npy')
     # plot_comparision_hist('episode_steps_none_fuzzy_noise_final.npy', 'episode_steps_fuzzy_noise_final.npy')
     # plot_comparision_hist('test_episode_state_fuzzy_new.npy', 'test_episode_state_fuzzy_final_new.npy')
     # plot_comparision_hist('test_episode_state_fuzzy_final_new.npy', 'test_episode_state_fuzzy_new.npy')
@@ -435,3 +490,6 @@ if __name__ == "__main__":
     # reward = np.load('episode_steps_none_fuzzy_noise_final.npy')
     # reward = np.hstack([reward_1, reward])
     # plot_reward(reward)
+
+    plot_force_and_moment('impedance_controller_episode_force_pose.npy', 'impedance_controller_episode_force_pose.npy')
+    # plot_six_action('impedance_controller_episode_action.npy')

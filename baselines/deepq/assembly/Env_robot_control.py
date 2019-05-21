@@ -353,23 +353,28 @@ class env_single_insert_control(object):
 
 
 class env_insert_control(object):
+
     def __init__(self, fuzzy=False):
 
         """state and Action Parameters"""
         self.action_dim = 6
         self.state_dim = 12
-        self.pull_terminal = False
-        self.add_noise = True
         self.fuzzy_control = fuzzy
-        self.state = np.zeros(self.observation_dim)
-        self.next_state = np.zeros(self.observation_dim)
+        self.state = np.zeros(self.state_dim)
+        self.next_state = np.zeros(self.state_dim)
+        self.init_state = np.zeros(self.state_dim)
         self.action = np.zeros(self.action_dim)
         self.reward = 1.
 
+        self.pull_terminal = False
+        self.add_noise = True
+
         """parameters for search phase"""
-        self.kp = np.array([0.02, 0.02, 0.002])
+        self.search_kp = np.array([0.02, 0.02, 0.002])
+        self.insert_kp = np.array([0.01, 0.01, 0.005])
         self.kd = np.array([0.002, 0.002, 0.0002])
-        self.kr = np.array([0.015, 0.015, 0.015])
+        self.kr = np.array([0.02, 0.02, 0.02])
+        self.kp = self.search_kp
         self.kv = 0.5
         self.k_former = 0.9
         self.k_later = 0.2
@@ -381,15 +386,16 @@ class env_insert_control(object):
         """The hole in world::::Tw_h=T*Tt_p, the matrix will change after installing again"""
         self.Tw_h = self.robot_control.Tw_h
         self.Tt_p = self.robot_control.T_tt
-        self.search_init_position = self.robot_control.start_pos
-        self.search_init_oriteation = self.robot_control.start_euler
+        # self.search_init_position = self.robot_control.start_pos
+        # self.search_init_oriteation = self.robot_control.start_euler
 
         """[Fx, Fy, Fz, Tx, Ty, Tz]"""
-        self.ref_force_insert = [0, 0, -50, 0, 0, 0]
+        self.ref_force_search = [0, 0, -50, 0, 0, 0]
+        self.ref_force_insert = [0, 0, -70, 0, 0, 0]
         self.ref_force_pull = [0., 0., 80., 0., 0., 0.]
 
         """The safe force::F, M"""
-        self.safe_force_moment = [50, 5]
+        self.safe_force_moment = [70, 5]
         self.safe_force_insert = [5, 1]
         self.last_force_error = np.zeros(3)
         self.former_force_error = np.zeros(3)
@@ -417,23 +423,26 @@ class env_insert_control(object):
     """reset the start position or choose the fixed position move little step by step"""
     """ ===========================set initial position for insertion==================== """
     def reset(self):
+
         self.terminal = False
-        self.pull_terminal = False
         self.safe_else = True
         self.Kp_z_0 = 0.93
         self.Kp_z_1 = 0.6
+        self.Kv = 0.5
 
         Position_0, Euler_0, Twt_0 = self.robot_control.GetCalibTool()
-        if Position_0[2] < 201:
+
+        if self.pull_terminal:
+            pass
+        else:
             exit("The pegs didn't move the init position!!!")
 
         """init_params: constant"""
-        init_position = np.array([6.328895870000000e+02, -44.731415000000000, 3.497448430000000e+02])
-        init_euler = np.array([1.798855440000000e+02, 1.306262000000000, -0.990207000000000])
+        init_position = self.robot_control.set_initial_pos
+        init_euler = self.robot_control.set_initial_euler
 
         """Move to the target point quickly and align with the holes"""
-        self.robot_control.MoveToolTo(init_position, init_euler, 20)
-        self.robot_control.Align_PegHole()
+        self.robot_control.MovelineTo(init_position, init_euler, 20)
 
         E_z = np.zeros(30)
         action = np.zeros((30, 3))
@@ -448,10 +457,7 @@ class env_insert_control(object):
             Position, Euler, Tw_t = self.robot_control.GetCalibTool()
             print(Position)
 
-            Tw_p = np.dot(Tw_t, self.robot_control.Tt_p)
-            print(self.robot_control.Tw_h[2, 3])
-
-            E_z[i] = self.robot_control.Tw_h[2, 3] - Tw_p[2, 3]
+            E_z[i] = self.robot_control.set_search_pos[2] - Position[2]
             print(E_z[i])
 
             if i < 3:
@@ -462,7 +468,7 @@ class env_insert_control(object):
                 action[i, :] = np.array([0., 0., self.Kp_z_1*E_z[i]])
                 vel_low = min(self.Kv * abs(E_z[i]), 0.5)
 
-            self.robot_control.MoveToolTo(Position + action[i, :], Euler, vel_low)
+            self.robot_control.MovelineTo(Position + action[i, :], Euler, vel_low)
             print(action[i, :])
 
             if abs(E_z[i]) < 0.001:
@@ -533,7 +539,7 @@ class env_insert_control(object):
             print("-------------------------------- The force is too large!!! -----------------------------")
         else:
             """Move and rotate the pegs"""
-            self.robot_control.MoveToolTo(state[:3] + movePosition[0][:3], state[3:] + movePosition[0][3:], setVel)
+            self.robot_control.MovelineTo(state[:3] + movePosition[0][:3], state[3:] + movePosition[0][3:], setVel)
             print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
             print('setPosition: ', setPosition)
             print('setEuLer: ', setEuler)
@@ -592,8 +598,17 @@ class env_insert_control(object):
     """Force Control"""
     def force_control(self, force_desired, force, state, step_num):
         done = False
-        print("=============================================================")
+
+        print("=========================Impedance Force Controller!!!===========================")
         print('force', force)
+
+        if state[2] < self.robot_control.target_pos[2]:
+            print("=========================11111111111111111111111111!!!===========================")
+            print("========================= !!!!!!!!!!Begin insertion!!!===========================")
+            print("=========================！！！！！！！！！！！！！！！！！===========================")
+            print("Step", step_num)
+            self.kp = self.insert_kp
+            force_desired = self.ref_force_insert
 
         force_error = force_desired - force
         force_error *= np.array([-1, 1, 1, -1, 1, 1])
@@ -608,13 +623,13 @@ class env_insert_control(object):
         else:
             setPosition = self.last_setPosition + self.kp * (force_error[:3] - self.last_force_error[:3]) + \
                           self.kd * (force_error[:3] - 2 * self.last_force_error[:3] + self.former_force_error[:3])
+            setPosition[2] = min(0.2, setPosition[2])
             self.last_setPosition = setPosition
             self.former_force_error = self.last_force_error
             self.last_force_error = force_error
 
         """Get the euler"""
         setEuler = self.kr * force_error[3:6]
-
         setVel = max(self.kv * abs(sum(force_error[:3])), 0.5)
 
         # """Get the current position"""
@@ -626,33 +641,34 @@ class env_insert_control(object):
 
         """move robot"""
         if self.safe_or_not is False:
-            exit("The force is too large!!!")
+            exit("================ The force is too large!!! ====================")
         else:
             """Move and rotate the pegs"""
-            self.robot_control.MoveToolTo(state[:3] + setPosition, state[3:] + setEuler, setVel)
+            self.robot_control.MovelineTo(state[:3] + setPosition, state[3:] + setEuler, setVel)
             print('setPosition', setPosition)
             print('euLer', setEuler)
 
-        if state[2] < self.robot_control.final_pos[2]:
-            print("=============== The search phase finished!!! ==================")
+        if state[2] < self.robot_control.set_insert_goal_pos[2]:
+            print("=============== The insert phase finished!!! ==================")
             done = True
-        return done
+
+        return setPosition, setEuler, done
 
     """Get the states and limit it the range"""
     def get_state(self):
         force = self.robot_control.GetFCForce()
-        self.sensors[:6] = force
+        self.state[:6] = force
 
         """Get the current position"""
         position, euler, T = self.robot_control.GetCalibTool()
 
-        self.sensors[6:9] = position
+        self.state[6:9] = position
 
-        self.sensors[9:12] = euler
+        self.state[9:12] = euler
 
-        state = self.sensors[6:12]
+        # pose = self.state[6:12]
         # s = self.sensors.astype(np.float32)
-        return self.sensors
+        return self.state
 
     """Normalization of state"""
     def get_obs(self, current_state):
@@ -673,14 +689,15 @@ class env_insert_control(object):
     """Pull the peg up by constant step"""
     def pull_peg_up(self):
         while True:
+
             """Get the current position"""
             Position, Euler, T = self.robot_control.GetCalibTool()
 
             """move and rotate"""
-            self.robot_control.MoveToolTo(Position + np.array([0., 0., 2]), Euler, self.pull_vel)
+            self.robot_control.MovelineTo(Position + np.array([0., 0., 2]), Euler, self.pull_vel)
 
             """finish or not"""
-            if Position[2] > self.robot_control.start_pos[2]:
+            if Position[2] > self.robot_control.set_initial_pos[2]:
                 print("=====================Pull up the pegs finished!!!======================")
                 self.pull_terminal = True
                 break
