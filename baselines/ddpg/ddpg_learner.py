@@ -260,7 +260,7 @@ class DDPG(object):
         self.stats_ops = ops
         self.stats_names = names
 
-    def step(self, obs, apply_noise=True, compute_Q=True):
+    def step(self, obs, sigma, apply_noise=True, compute_Q=True):
         if self.param_noise is not None and apply_noise:
             actor_tf = self.perturbed_actor_tf
         else:
@@ -273,7 +273,7 @@ class DDPG(object):
             q = None
 
         if self.action_noise is not None and apply_noise:
-            noise = self.action_noise()
+            noise = self.action_noise(sigma)
 
             # assert noise.shape == action.shape
             action += noise
@@ -282,7 +282,6 @@ class DDPG(object):
 
     def store_transition(self, obs0, action, reward, obs1, terminal1):
         reward *= self.reward_scale
-
         # B = obs0.shape[0]
         # for b in range(B):
         #     self.memory.append(obs0[b], action[b], reward[b], obs1[b], terminal1[b])
@@ -329,6 +328,7 @@ class DDPG(object):
             self.actions: batch['actions'],
             self.critic_target: target_Q,
         })
+
         self.actor_optimizer.update(actor_grads, stepsize=self.actor_lr)
         self.critic_optimizer.update(critic_grads, stepsize=self.critic_lr)
 

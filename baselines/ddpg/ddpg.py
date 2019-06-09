@@ -10,6 +10,9 @@ from baselines.ddpg.memory import Memory
 from baselines.ddpg.noise import AdaptiveParamNoiseSpec, NormalActionNoise, OrnsteinUhlenbeckActionNoise
 from baselines.deepq.assembly.Env_robot_control import env_search_control, env_continuous_search_control
 
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel
+from sklearn.linear_model import LinearRegression
 
 import baselines.common.tf_util as U
 
@@ -24,16 +27,18 @@ def learn(network,
           path='',
           model_path='./model/',
           model_name='ddpg_none_fuzzy',
+          model_based=False,
+          model_type='gp',
           restore=False,
           seed=None,
           total_timesteps=None,
-          nb_epochs=None,  # with default settings, perform 1M steps total
-          nb_epoch_cycles=20,
+          nb_epochs=1,  # with default settings, perform 1M steps total
+          nb_epoch_cycles=1,
           nb_rollout_steps=50,
           reward_scale=1.0,
           render=False,
           render_eval=False,
-          noise_type=None, #'adaptive-param_0.2'
+          noise_type='adaptive-param_0.2', #'adaptive-param_0.2'
           normalize_returns=False,
           normalize_observations=True,
           critic_l2_reg=1e-2,
@@ -137,7 +142,9 @@ def learn(network,
             episode_reward = 0.
             episode_step = 0
             episode_states = []
+            logger.info("================== The {} episode start !!! ===================".format(cycle))
             for t_rollout in range(nb_rollout_steps):
+
                 # Predict next action.
                 action, q, _, _ = agent.step(obs, apply_noise=True, compute_Q=True)
 
@@ -146,7 +153,7 @@ def learn(network,
                     env.render()
 
                 # max_action is of dimension A, whereas action is dimension (nenvs, A) - the multiplication gets broadcasted to the batch
-                new_obs, r, done, info = env.step(max_action * action, t_rollout)
+                new_obs, r, done, info, final_action = env.step(max_action * action, t_rollout)
 
                 # tion in env (as far as DDPG is concerned, every action is in [-1, 1])
                 # note these outputs are batched from vecenv
@@ -157,14 +164,23 @@ def learn(network,
 
                 episode_reward += r
                 episode_step += 1
-                episode_states.append(cp.deepcopy(obs))
+                episode_states.append([cp.deepcopy(obs), cp.deepcopy(final_action), np.array(cp.deepcopy(r)), cp.deepcopy(new_obs)])
 
                 # Book-keeping.
                 epoch_actions.append(action)
                 epoch_qs.append(q)
                 agent.store_transition(obs, action, r, new_obs, done)
 
-                #the batched data will be unrolled in memory.py's append.
+                if model_based:
+                    if model_type == 'gp':
+                        kernel = ConstantKernel(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
+                        dynamic_model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10)
+                    elif model_type == 'linear':
+                        dynamic_model = LinearRegression()
+                    else:
+                        dynamic_model = LinearRegression()
+
+                # the batched data will be unrolled in memory.py's append.
                 obs = new_obs
 
                 # for d in range(len(done)):
@@ -179,25 +195,30 @@ def learn(network,
                 #         episodes += 1
                 #         if nenvs == 1:
                 #             agent.reset()
+
                 if done:
                     # Episode done.
-                    epoch_episode_rewards.append(episode_reward)
-                    episode_rewards_history.append(episode_reward)
-                    epoch_episode_steps.append(episode_step)
-                    epoch_episode_states.append(cp.deepcopy(episode_states))
                     # episode_reward = 0.
                     # episode_step = 0.
-                    epoch_episodes += 1
-                    episodes += 1
+
                     # if nenvs == 1:
                     #     agent.reset()
                     break
+
+            epoch_episode_rewards.append(episode_reward)
+            episode_rewards_history.append(episode_reward)
+            epoch_episode_steps.append(episode_step)
+            epoch_episode_states.append(cp.deepcopy(episode_states))
+            epoch_episodes += 1
+            episodes += 1
+            logger.info("================== The {} steps finish  !!! ===================".format(t_rollout))
 
             # Train.
             epoch_actor_losses = []
             epoch_critic_losses = []
             epoch_adaptive_distances = []
             for t_train in range(nb_train_steps):
+
                 # Adapt param noise, if necessary.
                 if memory.nb_entries >= batch_size and t_train % param_noise_adaption_interval == 0:
                     distance = agent.adapt_param_noise()
@@ -278,19 +299,20 @@ def learn(network,
             logger.dump_tabular()
 
         # # save data
-        # np.save(path+'train_reward_none_fuzzy', epoch_episode_rewards)
-        # np.save(path+'train_step_none_fuzzy', epoch_episode_steps)
-        # np.save(path+'train_states_none_fuzzy', epoch_episode_states)
+        np.save(path+'train_none_reward_fuzzy_1', epoch_episode_rewards)
+        np.save(path+'train_none_step_fuzzy_1', epoch_episode_steps)
+        np.save(path+'train_none_states_fuzzy_1', epoch_episode_states)
         #
         # # agent save
-        # agent.store(model_path + model_name)
+        agent.store(path + 'train_model_none_fuzzy_1')
 
 
 if __name__ == '__main__':
 
     # env = env_search_control()
-    # env = env_continuous_search_control(fuzzy=False)
+    env = env_continuous_search_control(fuzzy=False)
 
-    env = gym.make("HalfCheetah-v2")
-    path = './data/'
-    learn(network='mlp', env=env, path=path)
+    # env = gym.make("HalfCheetah-v2")
+    path = './data/second_data/'
+    model_path = './data/second_model/'
+    learn(network='mlp', env=env, nb_epoch_cycles=100, path=path)

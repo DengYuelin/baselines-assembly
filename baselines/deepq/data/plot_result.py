@@ -474,6 +474,8 @@ def plot_comparision_hist(fuzzy_path, none_fuzzy_path):
 
 
 if __name__ == "__main__":
+
+
     # reward_1 = np.load('./episode_rewards.npy')
     # reward_2 = np.load('./episode_rewards_1.npy')
     # reward_3 = np.load('./episode_rewards_2.npy')
@@ -509,5 +511,5 @@ if __name__ == "__main__":
     # reward = np.hstack([reward_1, reward])
     # plot_reward(reward)
 
-    plot_force_and_moment('impedance_controller_episode_force_pose_2.npy', 'impedance_controller_episode_force_pose_2.npy')
-    plot_six_action('impedance_controller_episode_action_2.npy', 'impedance_controller_episode_force_pose_2.npy')
+    # plot_force_and_moment('impedance_controller_episode_force_pose_2.npy', 'impedance_controller_episode_force_pose_2.npy')
+    # plot_six_action('impedance_controller_episode_action_2.npy', 'impedance_controller_episode_force_pose_2.npy')

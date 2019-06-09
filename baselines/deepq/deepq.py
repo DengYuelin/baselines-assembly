@@ -246,6 +246,7 @@ def learn(env,
     episode_rewards = [0.0]
     epoch_episode_states = []
     epoch_episode_steps = []
+    epoch_episode_actions = []
     saved_mean_reward = None
     with tempfile.TemporaryDirectory() as td:
         td = checkpoint_path or td
@@ -298,7 +299,7 @@ def learn(env,
                 reset = False
 
                 # move to next step
-                new_obs, rew, done, safe_or_not = env.step(env_action, j)
+                new_obs, rew, setaction, done, safe_or_not = env.step(env_action, j)
 
                 if safe_or_not is False:
                     break
@@ -306,6 +307,7 @@ def learn(env,
                 # Store transition in the replay buffer.
                 replay_buffer.add(obs, action, rew, new_obs, float(done))
                 episode_states.append(cp.deepcopy(obs))
+                epoch_episode_actions.append(cp.deepcopy(setaction))
                 obs = new_obs
                 episode_reward += rew
                 episode_step += 1
@@ -358,9 +360,10 @@ def learn(env,
             epoch_episode_states.append(cp.deepcopy(episode_states))
             epoch_episode_steps.append(cp.deepcopy(episode_step))
             episode_rewards.append(cp.deepcopy(episode_reward))
-            # np.save('../data/episode_rewards' + save_path, episode_rewards)
-            # np.save('../data/episode_state' + save_path, epoch_episode_states)
-            # np.save('../data/episode_steps' + save_path, epoch_episode_steps)
+            np.save('../data/data_second/episode_rewards' + save_path, episode_rewards)
+            np.save('../data/data_second/episode_state' + save_path, epoch_episode_states)
+            np.save('../data/data_second/episode_steps' + save_path, epoch_episode_steps)
+            np.save('../data/data_second/episode_actions' + save_path, epoch_episode_actions)
             # replay_buffer.save_sample('../data/sample_data' + save_path)
 
         if model_saved:

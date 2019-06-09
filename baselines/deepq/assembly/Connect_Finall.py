@@ -17,10 +17,12 @@ import numpy as np
 HOST = '192.168.125.1'
 PORT = 1502
 
+
 __all__ = ('Robot_Control',)
 
 
 class Robot_Control(object):
+
     def __init__(self):
         """force direction + Z(down), +Y(left), +X(far from ABB)"""
         """The Matrix of Peg and hole"""
@@ -84,7 +86,7 @@ class Robot_Control(object):
         self.set_search_euler = np.array([179.8834, 1.3056,  -5.4893])
 
         # setting for insertion
-        self.set_insert_pos = np.array([539.8549, -39.466, 190.5095])
+        self.set_insert_pos = np.array([539.8549, -39.466, 191.0095])
         self.set_insert_euler = np.array([179.4898, 0.8922, -6.541])
 
         self.set_insert_goal_pos = np.array([539.8549, -39.466, 170.])
@@ -670,8 +672,8 @@ def Test_calibrate():
     # print('===================== Calibrate the force-moment sensor =========================')
     # done = Controller.CalibFCforce()
     #
-    # force = Controller.GetFCForce()
-    # print(force)
+    force = Controller.GetFCForce()
+    print(force)
     # print('=================================================================================')
 
     """Align peg and hole"""
@@ -684,15 +686,15 @@ def Test_calibrate():
     # print('=================================================================================')
 
     """used to search the initial position and euler; please note the other code"""
-    print('======================== Position and Force Information =========================')
-    position, euler, T = Controller.GetCalibTool()
-    print('position', position)
-    print('eulerang', euler)
+    # print('======================== Position and Force Information =========================')
+    # position, euler, T = Controller.GetCalibTool()
+    # print('position', position)
+    # print('eulerang', euler)
     # # Controller.MovelineTo(Controller.start_pos, Controller.start_euler, 1.0)
-    Controller.MovelineTo(position + [-0., 0., -200], euler + [-0., 0., -0.], 5.)
+    # Controller.MovelineTo(position + [-0., 0., 200], euler + [-0., 0., -0.], 5.)
     #
-    force = Controller.GetFCForce()
-    print(force)
+    # force = Controller.GetFCForce()
+    # print(force)
     # position, euler, T = Controller.GetCalibTool()
     # print('position', position)
     # print('eulerang', euler)

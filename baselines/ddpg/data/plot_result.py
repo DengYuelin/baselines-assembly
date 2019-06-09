@@ -27,14 +27,15 @@ def plot(result_path):
     plt.figure(figsize=(15, 15), dpi=100)
     plt.title('Search Result')
     prediction_result = np.load(result_path)
-    for i in range(len(prediction_result)):
-        for j in range(6):
-            line = prediction_result[:, j]
-            # plt.subplot(2, 3, j+1)
-            plt.plot(line)
-            plt.ylabel(YLABEL[j])
-            plt.xlabel('steps')
-            plt.legend(YLABEL)
+    plt.plot(prediction_result)
+    # for i in range(len(prediction_result)):
+    #     for j in range(6):
+    #         line = prediction_result[:, j]
+    #         # plt.subplot(2, 3, j+1)
+    #         plt.plot(line)
+    #         plt.ylabel(YLABEL[j])
+    #         plt.xlabel('steps')
+    #         plt.legend(YLABEL)
     plt.show()
 
 
@@ -301,20 +302,29 @@ def plot_compare(fuzzy_path, none_fuzz_path):
     plt.subplot(1, 1, 1)
     plt.tight_layout(pad=4.9, w_pad=1., h_pad=1.)
 
-    # plt.plot(np.arange(len(reward_none_fuzzy) - 1), np.array(reward_fuzzy[1:]), color='b', linewidth=2.5, label='Normal DDPG')
-    # plt.plot(np.arange(len(reward_none_fuzzy) - 1), np.array(reward_none_fuzzy[1:]), color='r', linewidth=2.5, label='Prediction-based DDPG')
+    CHINESE = False
 
-    plt.plot(np.arange(len(reward_none_fuzzy) - 1), np.array(reward_fuzzy[1:]), color='b', linewidth=2.5, label='DDPG')
-    plt.plot(np.arange(len(reward_none_fuzzy) - 1), np.array(reward_none_fuzzy[1:]), color='r', linewidth=2.5, label='基于环境预测知识优化DDPG')
+    if CHINESE:
+        plt.plot(np.arange(len(reward_none_fuzzy) - 1), np.array(reward_fuzzy[1:]), color='b', linewidth=2.5,
+                 label='DDPG')
+        plt.plot(np.arange(len(reward_none_fuzzy) - 1), np.array(reward_none_fuzzy[1:]), color='r', linewidth=2.5,
+                 label='基于环境预测知识优化DDPG')
+        plt.ylabel('每回合装配累计奖励值', fontsize=28)
+        plt.xlabel('训练回合数', fontsize=28)
+    else:
+
+        plt.plot(np.arange(len(reward_none_fuzzy) - 1), np.array(reward_fuzzy[1:]), color='b',
+                 linewidth=2.5, label='Normal DDPG')
+        plt.plot(np.arange(len(reward_none_fuzzy) - 1), np.array(reward_none_fuzzy[1:]), color='r',
+                 linewidth=2.5, label='Prediction-based DDPG')
+        plt.ylabel('Episode Step', fontsize=28)
+        plt.xlabel('Episodes', fontsize=28)
+
 
     # plt.ylim(-5, 1)
     plt.yticks(fontsize=28)
     plt.xticks(fontsize=28)
-    # plt.ylabel('Episode Step', fontsize=24)
-    # plt.xlabel('Episodes', fontsize=24)
     # plt.ylabel('每回合装配步数', fontsize=28)
-    plt.ylabel('每回合装配累计奖励值', fontsize=28)
-    plt.xlabel('训练回合数', fontsize=28)
     plt.legend(fontsize=28, loc='best')
 
     # plot_reward('./episode_rewards_100.npy')
@@ -393,10 +403,10 @@ def new_plot_compare(fuzzy_path, none_fuzz_path):
     # plt.savefig('./figure/pdf/chinese_ddpg_episode_step.pdf')
     # plt.savefig('./figure/jpg/chinese_ddpg_episode_step.jpg')
 
-    plt.savefig('./figure/pdf/chinese_ddpg_episode_reward.pdf')
-    plt.savefig('./figure/jpg/chinese_ddpg_episode_reward.jpg')
+    # plt.savefig('./figure/pdf/chinese_ddpg_episode_reward.pdf')
+    # plt.savefig('./figure/jpg/chinese_ddpg_episode_reward.jpg')
 
-    # plt.show()
+    plt.show()
 
 
 def plot_continuous_data(path):
@@ -509,8 +519,10 @@ def plot_comparision_hist_new(fuzzy_path, none_fuzzy_path):
 
 
 if __name__ == "__main__":
-    # plot_campare('./episode_rewards_fuzzy.npy', './episode_rewards_none_fuzzy.npy')
-    # plot_continuous_data('./search_force.npy')
+    # samples = np.load('./second_data/train_step_none_fuzzy.npy')
+    # print(samples)
+    # plot_compare('./episode_rewards_fuzzy.npy', './episode_rewards_none_fuzzy.npy')
+    plot('./second_data/train_step_fuzzy_1.npy')
 
     # plot_force_and_moment('./search_force_noise.npy', './search_state_noise.npy')
     # plot_learning_force_and_moment('./train_states_none_fuzzy.npy', './train_states_none_fuzzy.npy', 'ddpg_none_fuzzy')
@@ -533,6 +545,6 @@ if __name__ == "__main__":
 
     # plot_comparision_hist('step.npy', 'none_step.npy')
     # plot_comparision_hist('reward.npy', 'none_reward.npy')
-    plot_comparision_hist('./test_states_fuzzy.npy', './train_states_none_fuzzy.npy')
+    # plot_comparision_hist('./test_states_fuzzy.npy', './train_states_none_fuzzy.npy')
     # print(len(np.load('./train_states_none_fuzzy.npy')[0]))
 
