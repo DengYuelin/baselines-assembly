@@ -255,11 +255,17 @@ if __name__ == '__main__':
 
     data = np.load('./data/second_data/train_states_fuzzy.npy')
     # print(data[0][:, 3])
-    print(np.array(data[0]).reshape(-1, 4)[:, 3].flatten()[1])
+    print(data[0][0][0])
 
-    x = np.array(data[0]).reshape(-1, 4)[:, 3][1]
+    x = np.array(np.array(data[0]).reshape(-1, 4)[:, 3][:3]).flatten()
     y = np.array(data[0]).reshape(-1, 4)[:, 3][1]
 
+    X = np.zeros((len(data[0]), 18), dtype=np.float32)
+    Y = np.zeros((len(data[0]), 12), dtype=np.float32)
+    for i in range(len(data[0])):
+        X[i, :12] = data[0][i][0]
+        X[i, 12:] = data[0][i][1]
+        Y[i, :] = data[0][i][3]
 
     model_type = 'gp'
 
@@ -271,7 +277,12 @@ if __name__ == '__main__':
     else:
         dynamic_model = LinearRegression()
 
-    dynamic_model.fit(x, y)
+    x = np.array([[1., 1.], [1.2, 2.1]])
+    y = np.array([[2., 3.], [3., 4.]])
 
+    dynamic_model.fit(X, Y)
 
+    a = np.zeros((2, 10), dtype=np.float32)
+    b = np.zeros((2, 10), dtype=np.float32)
+    print(np.append(a, b, axis=0))
 

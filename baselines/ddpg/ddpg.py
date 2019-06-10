@@ -90,6 +90,15 @@ def learn(network,
             else:
                 raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
 
+    if model_based:
+        if model_type == 'gp':
+            kernel = ConstantKernel(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
+            dynamic_model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10)
+        elif model_type == 'linear':
+            dynamic_model = LinearRegression()
+        else:
+            dynamic_model = LinearRegression()
+
     max_action = env.max_action
     logger.info('scaling actions by {} before executing in env'.format(max_action))
 
@@ -131,14 +140,10 @@ def learn(network,
     epoch_episode_states = []
     epoch_qs = []
     epoch_episodes = 0
+    num_samples = 5
     for epoch in range(nb_epochs):
         for cycle in range(nb_epoch_cycles):
-            # Perform rollouts.
-            # if nenvs > 1:
-            #     # if simulating multiple envs in parallel, impossible to reset agent at the end of the episode in each
-            #     # of the environments, so resetting here instead
-            #     agent.reset()
-            obs, done = env.reset()
+            obs, done, state = env.reset()
             episode_reward = 0.
             episode_step = 0
             episode_states = []
@@ -153,10 +158,7 @@ def learn(network,
                     env.render()
 
                 # max_action is of dimension A, whereas action is dimension (nenvs, A) - the multiplication gets broadcasted to the batch
-                new_obs, r, done, info, final_action = env.step(max_action * action, t_rollout)
-
-                # tion in env (as far as DDPG is concerned, every action is in [-1, 1])
-                # note these outputs are batched from vecenv
+                new_obs, r, done, info, final_action, new_state = env.step(max_action * action, t_rollout)
 
                 t += 1
                 if rank == 0 and render:
@@ -169,16 +171,18 @@ def learn(network,
                 # Book-keeping.
                 epoch_actions.append(action)
                 epoch_qs.append(q)
+
                 agent.store_transition(obs, action, r, new_obs, done)
 
-                if model_based:
-                    if model_type == 'gp':
-                        kernel = ConstantKernel(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
-                        dynamic_model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10)
-                    elif model_type == 'linear':
-                        dynamic_model = LinearRegression()
-                    else:
-                        dynamic_model = LinearRegression()
+                for j in range(num_samples):
+                    m_action, _, _, _ = agent.step(obs, apply_noise=True, compute_Q=False)
+                    pred_x = np.zeros((1, 18), dtype=np.float32)
+                    pred_x[:, :12] = obs
+                    pred_x[:, 12:] = m_action
+                    m_new_obs = dynamic_model.predict(pred_x)
+                    state = env.inverse_state(m_new_obs)
+                    m_reward = env.get_reward(state, m_action)
+                    agent.store_transition(obs, m_action, m_reward, m_new_obs, done)
 
                 # the batched data will be unrolled in memory.py's append.
                 obs = new_obs
@@ -204,6 +208,23 @@ def learn(network,
                     # if nenvs == 1:
                     #     agent.reset()
                     break
+
+            input_x = np.zeros((len(episode_states), 18), dtype=np.float32)
+            input_y = np.zeros((len(episode_states), 12), dtype=np.float32)
+            for i in len(episode_states):
+                input_x[i, :12] = episode_states[i][0]
+                input_x[i, 12:] = episode_states[i][1]
+                input_y[i, :] = episode_states[i][3]
+
+            if cycle == 0 and epoch == 0:
+                train_x = input_x
+                train_y = input_y
+            else:
+                train_x = np.append(train_x, input_x, axis=0)
+                train_y = np.append(train_y, input_y, axis=0)
+
+            if model_based:
+                dynamic_model.fit(train_x, train_y)
 
             epoch_episode_rewards.append(episode_reward)
             episode_rewards_history.append(episode_reward)
