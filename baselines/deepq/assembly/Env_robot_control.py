@@ -813,10 +813,9 @@ class env_continuous_search_control(object):
         print("++++++++++++++++++++++++++++ Reset Finished !!! +++++++++++++++++++++++++++++")
         print('initial state', self.state)
 
-        return self.get_obs(self.state), done
+        return self.get_obs(self.state), done, self.state
 
     def step(self, action, step_num):
-
         """choose one action from the different actions vector"""
         done = False
         force_desired = self.desired_force_moment[0, :]
@@ -885,13 +884,32 @@ class env_continuous_search_control(object):
             print('state', state)
             # print(movePosition)
 
-        if state[2] < self.robot_control.set_insert_pos[2]:
+        self.next_state = self.get_state()
+        if self.state[8] < self.robot_control.set_insert_pos[2]:
             print("+++++++++++++++++++++++++++++ The Search Phase Finished!!! ++++++++++++++++++++++++++++")
             self.reward = 1 - step_num/self.step_max
             done = True
 
-        self.next_state = self.get_state()
-        return self.get_obs(self.next_state), self.reward, done, self.safe_or_not, movePosition[0]
+        return self.get_obs(self.next_state), self.reward, done, self.safe_or_not, movePosition[0], self.next_state
+
+    def get_reward(self, state, action):
+
+        reward = -0.1
+        force = state[:6]
+        state = state[6:]
+
+        """Judge the force&moment is safe for object"""
+        max_abs_F_M = np.array([max(abs(force[0:3])), max(abs(force[3:6]))])
+        safe_or_not = all(max_abs_F_M < self.max_force_moment)
+
+        if safe_or_not is False:
+            reward = -1
+
+        if state[2] < self.robot_control.set_insert_pos[2]:
+            print("+++++++++++++++++++++++++++++ The Search Phase Finished!!! ++++++++++++++++++++++++++++")
+            reward = 1
+
+        return reward
 
     def get_state(self):
         force = self.robot_control.GetFCForce()
@@ -900,6 +918,7 @@ class env_continuous_search_control(object):
         self.state[:6] = force
         self.state[6:9] = position
         self.state[9:12] = euler
+
         return self.state
 
     def get_obs(self, current_state):
@@ -915,7 +934,15 @@ class env_continuous_search_control(object):
         # normalize the state
         scale = self.high - self.low
         final_state = (state - self.low) / scale
+
         return final_state
+
+    def inverse_state(self, obs):
+        # normalize the state
+        scale = self.high - self.low
+        state = obs * scale + self.low
+
+        return state
 
     def positon_control(self, target_position):
 
