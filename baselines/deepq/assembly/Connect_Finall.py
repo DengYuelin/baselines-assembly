@@ -74,16 +74,22 @@ class Robot_Control(object):
         # self.start_pos = np.array([539.88842, -39.70193, 205.85147])
         # self.start_euler = np.array([179.88302, 1.30399, 1.00945])
 
+        # position [539.4771, - 59.6986, 196.302]
+        # eulerang [179.6401, 0.327, - 5.5023]
+
         # setting for
         self.set_pos = np.array([550.0107, -104.2418, 227.8422])
         self.set_euler = np.array([179.88302, 1.30399, 1.00945])
 
         self.set_initial_pos = np.array([539.8759, -39.7005, 200.5376])
-        self.set_initial_euler = np.array([179.4948, 0.8913, -5.9635])
+        self.set_initial_euler = np.array([179.6401,  0.327, -5.9635])
 
         # setting for search
-        self.set_search_pos = np.array([539.8759, -39.7005, 193.8086])
-        self.set_search_euler = np.array([179.8834, 1.3056,  -5.4893])
+        # self.set_search_pos = np.array([539.8759, -39.7005, 193.8086])
+        # self.set_search_euler = np.array([179.8834, 0.8922,  -5.4893])
+
+        self.set_search_pos = np.array([539.8634, -39.6989, 194.7765])
+        self.set_search_euler = np.array([179.8417,  0.9112, -5.5042])
 
         # setting for insertion
         self.set_insert_pos = np.array([539.8549, -39.466, 191.0095])
@@ -109,7 +115,8 @@ class Robot_Control(object):
         Q = self.EulerToQuternion(euler)
         swrite = '#SetTarget_1 ' + '*' + '[' + str('%0.3f' % position[0]) + ',' + str('%0.3f' % position[1]) + ',' + str(
             '%0.3f' % position[2]) + ']' + '!' + '[' + str('%0.3f' % Q[0]) + ',' + str('%0.3f' % Q[1]) + \
-                 ',' + str('%0.3f' % Q[2]) + ',' + str('%0.3f' % Q[3]) + ']@'
+                 ',' + str('%0.3f' % Q[2]) + ',' + str('%0.3f' % Q[3]) + ']' + '!' + str('%0.3f' % vel) + '@'
+
         # print(swrite)
         self.s.send(swrite.encode())
 
@@ -120,42 +127,28 @@ class Robot_Control(object):
             recvbuf = self.s.recv(2048).decode()
             time_out += 1
             # time.sleep(0.01)
-        print('--------------Move Finish!!!!-------------------\n')
+        print('--------------Move Finish!!!!-------------------')
 
-    """require the position and eluer current"""
     def GetCalibTool(self):
-
         recvbuf = ''
         Euler = np.zeros(3, dtype=float)
         Position = np.zeros(3, dtype=float)
 
         self.s.send('#GetCalibPar@'.encode())
-        time.sleep(0.01)
+        # time.sleep(0.01)
+
         time_out = 0
-        # while len(recvbuf) < 76 and time_out < 30:
-        #     recvbuf += self.s.recv(2048).decode()
-        #     time_out += 1
-        #     time.sleep(0.01)
-        while time_out < 6:
+        while len(recvbuf) == 0 and time_out < 20:
             recvbuf += self.s.recv(2048).decode()
             time_out += 1
-            time.sleep(0.01)
+            # time.sleep(0.001)
 
-        sendover = ''
-        time_out = 0
-        while sendover.find('Send Over!') == -1 and time_out < 10:
-            sendover = self.s.recv(2048).decode()
-            time.sleep(0.01)
-            time_out += 1
-        if time_out < 10:
-            pass
+        if time_out < 20 and recvbuf[len(recvbuf) - 4:len(recvbuf)] == 'Pose':
+            print('Get Pose Success!!!')
         else:
-            print('Position Send Fail for Time Out!\n')
-
-        # if time_out >= 30:
-        #     print('Get Tool Fail Time Out!\n')
-        #     result = False
-        #     return result
+            result = False
+            print('Get Pose Fail!')
+            return result
 
         px = recvbuf.find('PX')
         endnum_px = recvbuf.find('*', px)
@@ -170,52 +163,36 @@ class Robot_Control(object):
         ez = recvbuf.find('EZ')
         endnum_ez = recvbuf.find('*', ez)
 
-        Position[0] = round(float(recvbuf[(px + 2):endnum_px - 1]), 4)
-        Position[1] = round(float(recvbuf[(py + 2):endnum_py - 1]), 4)
-        Position[2] = round(float(recvbuf[(pz + 2):endnum_pz - 1]), 4)
-        Euler[0] = round(float(recvbuf[(ex + 2):endnum_ex - 1]), 4)
-        Euler[1] = round(float(recvbuf[(ey + 2):endnum_ey - 1]), 4)
-        Euler[2] = round(float(recvbuf[(ez + 2):endnum_ez - 1]), 4)
+        Position[0] = round(float(recvbuf[(px + 2):endnum_px]), 4)
+        Position[1] = round(float(recvbuf[(py + 2):endnum_py]), 4)
+        Position[2] = round(float(recvbuf[(pz + 2):endnum_pz]), 4)
+        Euler[0] = round(float(recvbuf[(ex + 2):endnum_ex]), 4)
+        Euler[1] = round(float(recvbuf[(ey + 2):endnum_ey]), 4)
+        Euler[2] = round(float(recvbuf[(ez + 2):endnum_ez]), 4)
         T = self.EulerToMatrix(Position, Euler)
-
+        # print(Position,Euler)
         return Position, Euler, T
 
-    """require the force and moment"""
     def GetFCForce(self):
-
         recvbuf = ''
         myForceVector = np.zeros(6, dtype=float)
         self.s.send('#GetFCForce@'.encode())
+        # time.sleep(0.01)
         time_out = 0
+        # while len(recvbuf) < 80 and time_out < 20:
 
-        # while len(recvbuf) < 76 and time_out < 30:
-        #     recvbuf += self.s.recv(2048).decode()
-        #     time_out += 1
-        #     time.sleep(0.01)
-        #     print(recvbuf)
-
-        while time_out < 6:
-            recvbuf += self.s.recv(2048).decode()
+        while len(recvbuf) == 0 and time_out < 20:
+            recvbuf = self.s.recv(2048).decode()
             time_out += 1
             time.sleep(0.01)
-
-        sendover = ''
-        time_out = 0
-        while sendover.find('Send Over!') == -1 and time_out < 10:
-            sendover = self.s.recv(2048).decode()
-            time.sleep(0.01)
-            time_out += 1
-        if time_out < 10:
-            pass
+            # print(recvbuf)
+        # print(time_out)
+        if time_out < 20 and recvbuf[len(recvbuf) - 5:len(recvbuf)] == 'Force':
+            print('Get Force Success!!!')
         else:
-            print('Force Send Fail for Time Out!\n')
-
-        # if time_out < 30:
-        #     print('Get Force Success!!!')
-        # else:
-        #     result = False
-        #     print('Get Force Fail!\n')
-        #     return result
+            result = False
+            print('Get Force Fail!')
+            return result
 
         fx = recvbuf.find('Fx')
         endnum_fx = recvbuf.find('*', fx)
@@ -229,14 +206,12 @@ class Robot_Control(object):
         endnum_ty = recvbuf.find('*', ty)
         tz = recvbuf.find('Tz')
         endnum_tz = recvbuf.find('*', tz)
-
-        # processing data
-        myForceVector[0] = round(float(recvbuf[(fx + 2):endnum_fx - 1]), 3)
-        myForceVector[1] = round(float(recvbuf[(fy + 2):endnum_fy - 1]), 3)
-        myForceVector[2] = round(float(recvbuf[(fz + 2):endnum_fz - 1]), 3)
-        myForceVector[3] = round(float(recvbuf[(tx + 2):endnum_tx - 1]), 3)
-        myForceVector[4] = round(float(recvbuf[(ty + 2):endnum_ty - 1]), 3)
-        myForceVector[5] = round(float(recvbuf[(tz + 2):endnum_tz - 1]), 3)
+        myForceVector[0] = round(float(recvbuf[(fx + 2):endnum_fx]), 4)
+        myForceVector[1] = round(float(recvbuf[(fy + 2):endnum_fy]), 4)
+        myForceVector[2] = round(float(recvbuf[(fz + 2):endnum_fz]), 4)
+        myForceVector[3] = round(float(recvbuf[(tx + 2):endnum_tx]), 4)
+        myForceVector[4] = round(float(recvbuf[(ty + 2):endnum_ty]), 4)
+        myForceVector[5] = round(float(recvbuf[(tz + 2):endnum_tz]), 4)
 
         return myForceVector
 
@@ -459,122 +434,240 @@ class Robot_Control(object):
 
         return True
 
-    """move joint to the target"""
-    def MoveJointTo(self, position, vel):
-        # send the code head
-        swrite = '#FileHead@'
-        self.s.send(swrite.encode())
-        Filecounter = 0
+    """require the force and moment"""
 
-        # The send module
-        Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + ' ' + 'MODULE movproc' + chr(10) + '@'
-        self.s.send(swrite.encode())
+    # """require the position and eluer current"""
+    # def GetCalibTool(self):
+    #
+    #     recvbuf = ''
+    #     Euler = np.zeros(3, dtype=float)
+    #     Position = np.zeros(3, dtype=float)
+    #
+    #     self.s.send('#GetCalibPar@'.encode())
+    #     time.sleep(0.01)
+    #     time_out = 0
+    #     # while len(recvbuf) < 76 and time_out < 30:
+    #     #     recvbuf += self.s.recv(2048).decode()
+    #     #     time_out += 1
+    #     #     time.sleep(0.01)
+    #     while time_out < 6:
+    #         recvbuf += self.s.recv(2048).decode()
+    #         time_out += 1
+    #         time.sleep(0.01)
+    #
+    #     sendover = ''
+    #     time_out = 0
+    #     while sendover.find('Send Over!') == -1 and time_out < 10:
+    #         sendover = self.s.recv(2048).decode()
+    #         time.sleep(0.01)
+    #         time_out += 1
+    #     if time_out < 10:
+    #         pass
+    #     else:
+    #         print('Position Send Fail for Time Out!\n')
+    #
+    #     # if time_out >= 30:
+    #     #     print('Get Tool Fail Time Out!\n')
+    #     #     result = False
+    #     #     return result
+    #
+    #     px = recvbuf.find('PX')
+    #     endnum_px = recvbuf.find('*', px)
+    #     py = recvbuf.find('PY')
+    #     endnum_py = recvbuf.find('*', py)
+    #     pz = recvbuf.find('PZ')
+    #     endnum_pz = recvbuf.find('*', pz)
+    #     ex = recvbuf.find('EX')
+    #     endnum_ex = recvbuf.find('*', ex)
+    #     ey = recvbuf.find('EY')
+    #     endnum_ey = recvbuf.find('*', ey)
+    #     ez = recvbuf.find('EZ')
+    #     endnum_ez = recvbuf.find('*', ez)
+    #
+    #     Position[0] = round(float(recvbuf[(px + 2):endnum_px - 1]), 4)
+    #     Position[1] = round(float(recvbuf[(py + 2):endnum_py - 1]), 4)
+    #     Position[2] = round(float(recvbuf[(pz + 2):endnum_pz - 1]), 4)
+    #     Euler[0] = round(float(recvbuf[(ex + 2):endnum_ex - 1]), 4)
+    #     Euler[1] = round(float(recvbuf[(ey + 2):endnum_ey - 1]), 4)
+    #     Euler[2] = round(float(recvbuf[(ez + 2):endnum_ez - 1]), 4)
+    #     T = self.EulerToMatrix(Position, Euler)
+    #
+    #     return Position, Euler, T
+    # def GetFCForce(self):
+    #
+    #     recvbuf = ''
+    #     myForceVector = np.zeros(6, dtype=float)
+    #     self.s.send('#GetFCForce@'.encode())
+    #     time_out = 0
+    #
+    #     # while len(recvbuf) < 76 and time_out < 30:
+    #     #     recvbuf += self.s.recv(2048).decode()
+    #     #     time_out += 1
+    #     #     time.sleep(0.01)
+    #     #     print(recvbuf)
+    #
+    #     while time_out < 6:
+    #         recvbuf += self.s.recv(2048).decode()
+    #         time_out += 1
+    #         time.sleep(0.01)
+    #
+    #     sendover = ''
+    #     time_out = 0
+    #     while sendover.find('Send Over!') == -1 and time_out < 10:
+    #         sendover = self.s.recv(2048).decode()
+    #         time.sleep(0.01)
+    #         time_out += 1
+    #     if time_out < 10:
+    #         pass
+    #     else:
+    #         print('Force Send Fail for Time Out!\n')
+    #
+    #     # if time_out < 30:
+    #     #     print('Get Force Success!!!')
+    #     # else:
+    #     #     result = False
+    #     #     print('Get Force Fail!\n')
+    #     #     return result
+    #
+    #     fx = recvbuf.find('Fx')
+    #     endnum_fx = recvbuf.find('*', fx)
+    #     fy = recvbuf.find('Fy')
+    #     endnum_fy = recvbuf.find('*', fy)
+    #     fz = recvbuf.find('Fz')
+    #     endnum_fz = recvbuf.find('*', fz)
+    #     tx = recvbuf.find('Tx')
+    #     endnum_tx = recvbuf.find('*', tx)
+    #     ty = recvbuf.find('Ty')
+    #     endnum_ty = recvbuf.find('*', ty)
+    #     tz = recvbuf.find('Tz')
+    #     endnum_tz = recvbuf.find('*', tz)
+    #
+    #     # processing data
+    #     myForceVector[0] = round(float(recvbuf[(fx + 2):endnum_fx - 1]), 3)
+    #     myForceVector[1] = round(float(recvbuf[(fy + 2):endnum_fy - 1]), 3)
+    #     myForceVector[2] = round(float(recvbuf[(fz + 2):endnum_fz - 1]), 3)
+    #     myForceVector[3] = round(float(recvbuf[(tx + 2):endnum_tx - 1]), 3)
+    #     myForceVector[4] = round(float(recvbuf[(ty + 2):endnum_ty - 1]), 3)
+    #     myForceVector[5] = round(float(recvbuf[(tz + 2):endnum_tz - 1]), 3)
+    #
+    #     return myForceVector
 
-        # The target point
-        Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + ' ' + chr(9) + 'CONST jointtarget Target_1000:=' + '@'
-        self.s.send(swrite.encode())
-        Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + ' ' + chr(9) + '[[' + str('%.5f', position[0]) +\
-                 ',' + str('%.5f', position[1]) + ',' + str('%.5f', position[2]) + ',' + str('%.5f', position[3]) +\
-                 ',' + str('%.5f', position[4]) + ',' + str('%.5f', position[5]) + '],' + '@'
-        self.s.send(swrite.encode())
-
-        Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + ' ' + chr(9) + '[0,9E9,9E9,9E9,9E9,9E9]];' + '@'
-        self.s.send(swrite.encode())
-
-        # The beginning of program
-        Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + ' ' + 'PROC Path_10()' + chr(10) + '@'
-        self.s.send(swrite.encode())
-
-        # Move instruct
-        Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + ' ' + chr(9) + 'MoveAbsj Target_1000,userspeed' +\
-                 chr(92) + 'V:=' + str('%.5f', vel) + ',z100,Tool0' + chr(92) + 'WObj:=wobj0;' + chr(10) + '@'
-        self.s.send(swrite.encode())
-
-        # MoveFinish
-        Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + ' ' + ' MovtionFinish;' + '@'
-        self.s.send(swrite.encode())
-
-        # ERROR_MovtionFinish
-        Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + ' ' + 'ERROR' + '@'
-        self.s.send(swrite.encode())
-
-        Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + ' ' + ' MovtionFinish;' + '@'
-        self.s.send(swrite.encode())
-
-        # The end of the code
-        Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + ' ' + 'ENDPROC' + '@'
-        self.s.send(swrite.encode())
-
-        # The end of the module
-        Filecounter += 1
-        swrite = '#FileData ' + str(Filecounter) + ' '  'ENDMODULE' '@'
-        self.s.send(swrite.encode())
-
-        # send the end of the document
-        swrite = '#FileEnd@'
-        self.s.send(swrite.encode())
-
-        # Receive the message of the robot and send the instruct to control the robot
-        recvbuf = ''
-        time_out = 0
-        while recvbuf.find('Receive Over Time Out!') == -1 and time_out < 20:
-            recvbuf = self.s.recv()
-            time_out += 1
-            time.sleep(0.01)
-
-        if time_out < 20:
-            pass
-        else:
-            print('Receive Fail Time Out!\n')
-
-        self.s.send('#WorkStart@')
-
-        # Wait the message of the finish signal of the motion work
-        recvbuf = ''
-        time_out = 0
-        while recvbuf.find('MotionFinish') == -1 and time_out < 100:
-            recvbuf = self.s.recv(2048).decode()
-            time_out += 1
-            time.sleep(0.01)
-
-        if time_out < 20:
-            pass
-        else:
-            print('Move Tool Fail Timne Out!\n')
-
-    """"excute the aligh action for the pegs and holes"""
-    def Align_PegHole(self):
-        # Get the current position, euler and matrix T
-        _, _, Tw_t = self.GetCalibTool()
-
-        # the current position and
-        Tw_p = np.dot(Tw_t, self.T_tt)
-        Th_p = np.dot(np.linalg.inv(self.Tw_h), Tw_p)
-
-        # Calculate the position and euler of pegs
-        Tw_p_2 = self.Tw_h
-        Tw_p_2[2, 3] = Tw_p[2, 3]
-        dT = np.dot(np.linalg.inv(Tw_p), Tw_p_2)
-        dT_2 = np.dot(np.dot(self.T_tt, dT), np.linalg.inv(self.T_tt))
-        Tw_t2 = np.dot(Tw_t, dT_2)
-        [position_t2, eulerang_t2] = self.MatrixToEuler(Tw_t2)
-
-        # Get the force of the pegs
-        myForceVector = self.GetFCForce()
-
-        # Move the pegs to target
-        self.MoveToolTo(position_t2, eulerang_t2, 20)
-        return position_t2, eulerang_t2
+    # """move joint to the target"""
+    # def MoveJointTo(self, position, vel):
+    #     # send the code head
+    #     swrite = '#FileHead@'
+    #     self.s.send(swrite.encode())
+    #     Filecounter = 0
+    #
+    #     # The send module
+    #     Filecounter += 1
+    #     swrite = '#FileData ' + str(Filecounter) + ' ' + 'MODULE movproc' + chr(10) + '@'
+    #     self.s.send(swrite.encode())
+    #
+    #     # The target point
+    #     Filecounter += 1
+    #     swrite = '#FileData ' + str(Filecounter) + ' ' + chr(9) + 'CONST jointtarget Target_1000:=' + '@'
+    #     self.s.send(swrite.encode())
+    #     Filecounter += 1
+    #     swrite = '#FileData ' + str(Filecounter) + ' ' + chr(9) + '[[' + str('%.5f', position[0]) +\
+    #              ',' + str('%.5f', position[1]) + ',' + str('%.5f', position[2]) + ',' + str('%.5f', position[3]) +\
+    #              ',' + str('%.5f', position[4]) + ',' + str('%.5f', position[5]) + '],' + '@'
+    #     self.s.send(swrite.encode())
+    #
+    #     Filecounter += 1
+    #     swrite = '#FileData ' + str(Filecounter) + ' ' + chr(9) + '[0,9E9,9E9,9E9,9E9,9E9]];' + '@'
+    #     self.s.send(swrite.encode())
+    #
+    #     # The beginning of program
+    #     Filecounter += 1
+    #     swrite = '#FileData ' + str(Filecounter) + ' ' + 'PROC Path_10()' + chr(10) + '@'
+    #     self.s.send(swrite.encode())
+    #
+    #     # Move instruct
+    #     Filecounter += 1
+    #     swrite = '#FileData ' + str(Filecounter) + ' ' + chr(9) + 'MoveAbsj Target_1000,userspeed' +\
+    #              chr(92) + 'V:=' + str('%.5f', vel) + ',z100,Tool0' + chr(92) + 'WObj:=wobj0;' + chr(10) + '@'
+    #     self.s.send(swrite.encode())
+    #
+    #     # MoveFinish
+    #     Filecounter += 1
+    #     swrite = '#FileData ' + str(Filecounter) + ' ' + ' MovtionFinish;' + '@'
+    #     self.s.send(swrite.encode())
+    #
+    #     # ERROR_MovtionFinish
+    #     Filecounter += 1
+    #     swrite = '#FileData ' + str(Filecounter) + ' ' + 'ERROR' + '@'
+    #     self.s.send(swrite.encode())
+    #
+    #     Filecounter += 1
+    #     swrite = '#FileData ' + str(Filecounter) + ' ' + ' MovtionFinish;' + '@'
+    #     self.s.send(swrite.encode())
+    #
+    #     # The end of the code
+    #     Filecounter += 1
+    #     swrite = '#FileData ' + str(Filecounter) + ' ' + 'ENDPROC' + '@'
+    #     self.s.send(swrite.encode())
+    #
+    #     # The end of the module
+    #     Filecounter += 1
+    #     swrite = '#FileData ' + str(Filecounter) + ' '  'ENDMODULE' '@'
+    #     self.s.send(swrite.encode())
+    #
+    #     # send the end of the document
+    #     swrite = '#FileEnd@'
+    #     self.s.send(swrite.encode())
+    #
+    #     # Receive the message of the robot and send the instruct to control the robot
+    #     recvbuf = ''
+    #     time_out = 0
+    #     while recvbuf.find('Receive Over Time Out!') == -1 and time_out < 20:
+    #         recvbuf = self.s.recv()
+    #         time_out += 1
+    #         time.sleep(0.01)
+    #
+    #     if time_out < 20:
+    #         pass
+    #     else:
+    #         print('Receive Fail Time Out!\n')
+    #
+    #     self.s.send('#WorkStart@')
+    #
+    #     # Wait the message of the finish signal of the motion work
+    #     recvbuf = ''
+    #     time_out = 0
+    #     while recvbuf.find('MotionFinish') == -1 and time_out < 100:
+    #         recvbuf = self.s.recv(2048).decode()
+    #         time_out += 1
+    #         time.sleep(0.01)
+    #
+    #     if time_out < 20:
+    #         pass
+    #     else:
+    #         print('Move Tool Fail Timne Out!\n')
+    #
+    # """"excute the aligh action for the pegs and holes"""
+    # def Align_PegHole(self):
+    #     # Get the current position, euler and matrix T
+    #     _, _, Tw_t = self.GetCalibTool()
+    #
+    #     # the current position and
+    #     Tw_p = np.dot(Tw_t, self.T_tt)
+    #     Th_p = np.dot(np.linalg.inv(self.Tw_h), Tw_p)
+    #
+    #     # Calculate the position and euler of pegs
+    #     Tw_p_2 = self.Tw_h
+    #     Tw_p_2[2, 3] = Tw_p[2, 3]
+    #     dT = np.dot(np.linalg.inv(Tw_p), Tw_p_2)
+    #     dT_2 = np.dot(np.dot(self.T_tt, dT), np.linalg.inv(self.T_tt))
+    #     Tw_t2 = np.dot(Tw_t, dT_2)
+    #     [position_t2, eulerang_t2] = self.MatrixToEuler(Tw_t2)
+    #
+    #     # Get the force of the pegs
+    #     myForceVector = self.GetFCForce()
+    #
+    #     # Move the pegs to target
+    #     self.MoveToolTo(position_t2, eulerang_t2, 20)
+    #     return position_t2, eulerang_t2
 
     # """require the position and eluer current"""
     # def GetCalibTool(self):
@@ -670,10 +763,10 @@ def Test_calibrate():
 
     """Calibrate the force sensor"""
     # print('===================== Calibrate the force-moment sensor =========================')
-    # done = Controller.CalibFCforce()
+    done = Controller.CalibFCforce()
     #
-    force = Controller.GetFCForce()
-    print(force)
+    # force = Controller.GetFCForce()
+    # print(force)
     # print('=================================================================================')
 
     """Align peg and hole"""
@@ -690,11 +783,12 @@ def Test_calibrate():
     # position, euler, T = Controller.GetCalibTool()
     # print('position', position)
     # print('eulerang', euler)
-    # # Controller.MovelineTo(Controller.start_pos, Controller.start_euler, 1.0)
-    # Controller.MovelineTo(position + [-0., 0., 200], euler + [-0., 0., -0.], 5.)
-    #
+    # Controller.MovelineTo(Controller.start_pos, Controller.start_euler, 1.0)
+    # Controller.MovelineTo(position + [-0., -0., 200.], euler + [-0., -0., -0.], 50)
+    # Controller.MovelineTo(Controller.set_search_pos+[0., 0., 0], Controller.set_search_euler + [-0., 0., -0.], 5)
     # force = Controller.GetFCForce()
     # print(force)
+
     # position, euler, T = Controller.GetCalibTool()
     # print('position', position)
     # print('eulerang', euler)

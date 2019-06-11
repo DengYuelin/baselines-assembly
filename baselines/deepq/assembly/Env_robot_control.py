@@ -795,13 +795,13 @@ class env_continuous_search_control(object):
             inital_euler = self.robot_control.set_search_euler
 
         """Move to the target point quickly and align with the holes"""
-        _ = self.positon_control(self.robot_control.set_search_pos)
+        # _ = self.positon_control(self.robot_control.set_search_pos)
         self.robot_control.MovelineTo(initial_pos, inital_euler, 5)
 
         """Get the max force and moment"""
         myForceVector = self.robot_control.GetFCForce()
         max_fm = np.array([max(abs(myForceVector[0:3])), max(abs(myForceVector[3:6]))])
-
+        # print(max_fm)
         safe_or_not = all(max_fm < self.max_force_moment)
         if safe_or_not is not True:
             exit("The pegs can't move for the exceed force!!!")
@@ -813,7 +813,7 @@ class env_continuous_search_control(object):
         print("++++++++++++++++++++++++++++ Reset Finished !!! +++++++++++++++++++++++++++++")
         print('initial state', self.state)
 
-        return self.get_obs(self.state), done
+        return self.get_obs(self.state), done, self.state
 
     def step(self, action, step_num):
 
@@ -891,7 +891,7 @@ class env_continuous_search_control(object):
             done = True
 
         self.next_state = self.get_state()
-        return self.get_obs(self.next_state), self.reward, done, self.safe_or_not, movePosition[0]
+        return self.get_obs(self.next_state), self.reward, done, self.safe_or_not, movePosition[0], self.next_state
 
     def get_state(self):
         force = self.robot_control.GetFCForce()
