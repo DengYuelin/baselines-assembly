@@ -34,11 +34,11 @@ def learn(network,
           total_timesteps=None,
           nb_epochs=1,  # with default settings, perform 1M steps total
           nb_epoch_cycles=1,
-          nb_rollout_steps=50,
+          nb_rollout_steps=100,
           reward_scale=1.0,
           render=False,
           render_eval=False,
-          noise_type='adaptive-param_0.2', #'adaptive-param_0.2'
+          noise_type='adaptive-param_0.2', #'adaptive-param_0.2', ou_0.2, normal_0.2
           normalize_returns=False,
           normalize_observations=True,
           critic_l2_reg=1e-2,
@@ -121,12 +121,6 @@ def learn(network,
         agent.initialize(sess)
         sess.graph.finalize()
 
-    # if eval_env is not None:
-    #     eval_obs = eval_env.reset()
-    # nenvs = obs.shape[0]
-    # episode_reward = np.zeros(nenvs, dtype=np.float32) #vector
-    # episode_step = np.zeros(nenvs, dtype=int) # vector
-
     agent.reset()
     episodes = 0
     t = 0
@@ -151,7 +145,7 @@ def learn(network,
             for t_rollout in range(nb_rollout_steps):
 
                 # Predict next action.
-                action, q, _, _ = agent.step(obs, apply_noise=True, compute_Q=True)
+                action, q, _, _ = agent.step(obs, stddev, apply_noise=True, compute_Q=True)
 
                 # Execute next action.
                 if rank == 0 and render:
@@ -174,15 +168,16 @@ def learn(network,
 
                 agent.store_transition(obs, action, r, new_obs, done)
 
-                for j in range(num_samples):
-                    m_action, _, _, _ = agent.step(obs, apply_noise=True, compute_Q=False)
-                    pred_x = np.zeros((1, 18), dtype=np.float32)
-                    pred_x[:, :12] = obs
-                    pred_x[:, 12:] = m_action
-                    m_new_obs = dynamic_model.predict(pred_x)
-                    state = env.inverse_state(m_new_obs)
-                    m_reward = env.get_reward(state, m_action)
-                    agent.store_transition(obs, m_action, m_reward, m_new_obs, done)
+                if model_based:
+                    for j in range(num_samples):
+                        m_action, _, _, _ = agent.step(obs, apply_noise=True, compute_Q=False)
+                        pred_x = np.zeros((1, 18), dtype=np.float32)
+                        pred_x[:, :12] = obs
+                        pred_x[:, 12:] = m_action
+                        m_new_obs = dynamic_model.predict(pred_x)
+                        state = env.inverse_state(m_new_obs)
+                        m_reward = env.get_reward(state, m_action)
+                        agent.store_transition(obs, m_action, m_reward, m_new_obs, done)
 
                 # the batched data will be unrolled in memory.py's append.
                 obs = new_obs
@@ -209,23 +204,24 @@ def learn(network,
                     #     agent.reset()
                     break
 
-            input_x = np.zeros((len(episode_states), 18), dtype=np.float32)
-            input_y = np.zeros((len(episode_states), 12), dtype=np.float32)
-            for i in len(episode_states):
-                input_x[i, :12] = episode_states[i][0]
-                input_x[i, 12:] = episode_states[i][1]
-                input_y[i, :] = episode_states[i][3]
-
-            if cycle == 0 and epoch == 0:
-                train_x = input_x
-                train_y = input_y
-            else:
-                train_x = np.append(train_x, input_x, axis=0)
-                train_y = np.append(train_y, input_y, axis=0)
-
             if model_based:
-                dynamic_model.fit(train_x, train_y)
+                input_x = np.zeros((len(episode_states), 18), dtype=np.float32)
+                input_y = np.zeros((len(episode_states), 12), dtype=np.float32)
 
+                for i in len(episode_states):
+                    input_x[i, :12] = episode_states[i][0]
+                    input_x[i, 12:] = episode_states[i][1]
+                    input_y[i, :] = episode_states[i][3]
+
+                if cycle == 0 and epoch == 0:
+                    train_x = input_x
+                    train_y = input_y
+                else:
+                    train_x = np.append(train_x, input_x, axis=0)
+                    train_y = np.append(train_y, input_y, axis=0)
+
+                dynamic_model.fit(train_x, train_y)
+            stddev = float(stddev) * 0.95
             epoch_episode_rewards.append(episode_reward)
             episode_rewards_history.append(episode_reward)
             epoch_episode_steps.append(episode_step)
@@ -320,20 +316,20 @@ def learn(network,
             logger.dump_tabular()
 
         # # save data
-        np.save(path+'train_none_reward_fuzzy_1', epoch_episode_rewards)
-        np.save(path+'train_none_step_fuzzy_1', epoch_episode_steps)
-        np.save(path+'train_none_states_fuzzy_1', epoch_episode_states)
-        #
+        np.save(path+'train_reward_fuzzy_' + noise_type, epoch_episode_rewards)
+        np.save(path+'train_step_fuzzy_' + noise_type, epoch_episode_steps)
+        np.save(path+'train_states_fuzzy_' + noise_type, epoch_episode_states)
+
         # # agent save
-        agent.store(path + 'train_model_none_fuzzy_1')
+        agent.store(path + 'train_model_none_fuzzy' + noise_type)
 
 
 if __name__ == '__main__':
 
     # env = env_search_control()
-    env = env_continuous_search_control(fuzzy=False)
+    env = env_continuous_search_control(fuzzy=True)
 
     # env = gym.make("HalfCheetah-v2")
-    path = './data/second_data/'
-    model_path = './data/second_model/'
-    learn(network='mlp', env=env, nb_epoch_cycles=100, path=path)
+    path = './data/third_data/'
+    model_path = './data/third_model/'
+    learn(network='mlp', env=env, nb_epoch_cycles=100, path=path, model_based=False, noise_type='normal_0.2')

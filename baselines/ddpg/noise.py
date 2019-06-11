@@ -39,7 +39,7 @@ class NormalActionNoise(ActionNoise):
         self.sigma = sigma
 
     def __call__(self, sigma):
-        self.sigma = sigma
+        self.sigma = float(sigma) * np.ones(self.mu.shape)
         return np.random.normal(self.mu, self.sigma)
 
     def __repr__(self):
@@ -57,7 +57,7 @@ class OrnsteinUhlenbeckActionNoise(ActionNoise):
         self.reset()
 
     def __call__(self, sigma):
-        self.sigma = sigma
+        self.sigma = float(sigma) * np.ones(self.mu.shape)
         x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
         self.x_prev = x
         return x

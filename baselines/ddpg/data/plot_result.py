@@ -522,7 +522,8 @@ if __name__ == "__main__":
     # samples = np.load('./second_data/train_step_none_fuzzy.npy')
     # print(samples)
     # plot_compare('./episode_rewards_fuzzy.npy', './episode_rewards_none_fuzzy.npy')
-    plot('./second_data/train_step_fuzzy_1.npy')
+    # plot('./second_data/train_step_fuzzy_1.npy')
+    plot('./third_data/train_step_fuzzy_normal_0.2.npy')
 
     # plot_force_and_moment('./search_force_noise.npy', './search_state_noise.npy')
     # plot_learning_force_and_moment('./train_states_none_fuzzy.npy', './train_states_none_fuzzy.npy', 'ddpg_none_fuzzy')
