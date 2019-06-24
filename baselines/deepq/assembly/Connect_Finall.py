@@ -91,8 +91,11 @@ class Robot_Control(object):
         self.set_search_pos = np.array([539.8634, -39.6989, 194.7765])
         self.set_search_euler = np.array([179.8417,  0.9112, -5.5042])
 
+        self.set_search_goal_pos = np.array([539.8549, -39.466, 191.0095])
+        self.set_search_goal_euler = np.array([179.4898, 0.8922, -6.541])
+
         # setting for insertion
-        self.set_insert_pos = np.array([539.8549, -39.466, 191.0095])
+        self.set_insert_pos = np.array([539.8549, -39.466, 170.0095])
         self.set_insert_euler = np.array([179.4898, 0.8922, -6.541])
 
         self.set_insert_goal_pos = np.array([539.8549, -39.466, 170.])
@@ -113,7 +116,7 @@ class Robot_Control(object):
     def MovelineTo(self, position, euler, vel):
 
         Q = self.EulerToQuternion(euler)
-        swrite = '#SetTarget_1 ' + '*' + '[' + str('%0.3f' % position[0]) + ',' + str('%0.3f' % position[1]) + ',' + str(
+        swrite = '#SetTar_1 ' + '*' + '[' + str('%0.3f' % position[0]) + ',' + str('%0.3f' % position[1]) + ',' + str(
             '%0.3f' % position[2]) + ']' + '!' + '[' + str('%0.3f' % Q[0]) + ',' + str('%0.3f' % Q[1]) + \
                  ',' + str('%0.3f' % Q[2]) + ',' + str('%0.3f' % Q[3]) + ']' + '!' + str('%0.3f' % vel) + '@'
 
@@ -763,7 +766,7 @@ def Test_calibrate():
 
     """Calibrate the force sensor"""
     # print('===================== Calibrate the force-moment sensor =========================')
-    done = Controller.CalibFCforce()
+    # done = Controller.CalibFCforce()
     #
     # force = Controller.GetFCForce()
     # print(force)
@@ -780,11 +783,11 @@ def Test_calibrate():
 
     """used to search the initial position and euler; please note the other code"""
     # print('======================== Position and Force Information =========================')
-    # position, euler, T = Controller.GetCalibTool()
-    # print('position', position)
-    # print('eulerang', euler)
+    position, euler, T = Controller.GetCalibTool()
+    print('position', position)
+    print('eulerang', euler)
     # Controller.MovelineTo(Controller.start_pos, Controller.start_euler, 1.0)
-    # Controller.MovelineTo(position + [-0., -0., 200.], euler + [-0., -0., -0.], 50)
+    Controller.MovelineTo(position + [-0., -0., 2], euler + [-0., -0., -0.], 20)
     # Controller.MovelineTo(Controller.set_search_pos+[0., 0., 0], Controller.set_search_euler + [-0., 0., -0.], 5)
     # force = Controller.GetFCForce()
     # print(force)

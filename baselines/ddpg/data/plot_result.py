@@ -523,7 +523,25 @@ if __name__ == "__main__":
     # print(samples)
     # plot_compare('./episode_rewards_fuzzy.npy', './episode_rewards_none_fuzzy.npy')
     # plot('./second_data/train_step_fuzzy_1.npy')
-    plot('./third_data/train_step_fuzzy_normal_0.2.npy')
+    data = np.load('./third_data/train_states_fuzzy_normal_0.2.npy')
+
+    high = np.array([50, 50, 0, 5, 5, 6, 542, -36, 192, 5, 5, 6])
+    low = np.array([-50, -50, -50, -5, -5, -6, 538, -42, 188, -5, -5, -6])
+    scale = np.array([100, 100, 50, 10, 10, 12, 4, 6, 4, 10, 10, 12])
+
+    episodes = np.zeros((len(data[0]), 12), dtype=np.float32)
+    for j in range(len(data[0])):
+        episodes[j, :] = data[0][j][0]
+    print('episodes', episodes[0:2])
+    print(np.max(episodes[0:2], axis=0))
+
+    for i in range(1, len(data)):
+        episode = np.zeros((len(data[i]), 12), dtype=np.float32)
+        for j in range(len(data[i])):
+            episode[j, :] = data[i][j][0] * scale + low
+        episodes = np.append(episodes, episode, axis=0)
+
+    # print(np.max(episodes, axis=1))
 
     # plot_force_and_moment('./search_force_noise.npy', './search_state_noise.npy')
     # plot_learning_force_and_moment('./train_states_none_fuzzy.npy', './train_states_none_fuzzy.npy', 'ddpg_none_fuzzy')

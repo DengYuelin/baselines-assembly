@@ -720,7 +720,7 @@ class env_continuous_search_control(object):
         self.add_noise = True
         self.pull_terminal = False
         self.fuzzy_control = fuzzy
-        self.step_max = 50
+        self.step_max = 100
         self.step_max_pos = 15
         self.max_action = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
 
@@ -728,7 +728,7 @@ class env_continuous_search_control(object):
         self.robot_control = Robot_Control()
 
         """The desired force and moments :: get the force"""
-        self.desired_force_moment = np.array([[0, 0, -50, 0, 0, 0],
+        self.desired_force_moment = np.array([[0, 0, -70, 0, 0, 0],
                                               [0, 0, -50, 0, 0, 0],
                                               [0, 0, -50, 0, 0, 0],
                                               [0, 0, -50, 0, 0, 0],
@@ -758,8 +758,8 @@ class env_continuous_search_control(object):
         self.observation_space = spaces.Box(self.low, self.high)
 
         """build a fuzzy control system"""
-        self.fc = fuzzy_control(low_output=np.array([0.01, 0.01, 0.001, 0.01, 0.01, 0.01]),
-                                high_output=np.array([0.03, 0.03, 0.003, 0.02, 0.02, 0.02]))
+        self.fc = fuzzy_control(low_output=np.array([0.00, 0.00, 0.000, 0.00, 0.00, 0.00]),
+                                high_output=np.array([0.04, 0.04, 0.004, 0.03, 0.03, 0.03]))
 
     def reset(self):
 
@@ -816,7 +816,6 @@ class env_continuous_search_control(object):
         return self.get_obs(self.state), done, self.state
 
     def step(self, action, step_num):
-
         """choose one action from the different actions vector"""
         done = False
         force_desired = self.desired_force_moment[0, :]
@@ -875,6 +874,7 @@ class env_continuous_search_control(object):
             print('Max_force_moment:', force)
             self.reward = -1
             print("-------------------------------- The force is too large!!! -----------------------------")
+            self.pull_peg_up()
         else:
             """Move and rotate the pegs"""
             self.robot_control.MovelineTo(state[:3] + movePosition[0][:3], state[3:] + movePosition[0][3:], setVel)
@@ -883,15 +883,44 @@ class env_continuous_search_control(object):
             print('setEuLer: ', setEuler)
             print('force', force)
             print('state', state)
-            # print(movePosition)
 
-        if state[2] < self.robot_control.set_insert_pos[2]:
-            print("+++++++++++++++++++++++++++++ The Search Phase Finished!!! ++++++++++++++++++++++++++++")
+        self.next_state = self.get_state()
+        if self.state[8] < self.robot_control.set_insert_pos[2]:
             self.reward = 1 - step_num/self.step_max
             done = True
 
+        if self.state[8] < self.robot_control.set_search_goal_pos[2]:
+            print("+++++++++++++++++++++++++++++ The Search Phase Finished!!! ++++++++++++++++++++++++++++")
+            self.kp = np.array([0.002, 0.002, 0.025])
+            self.kd = np.array([0.0002, 0.0002, 0.0022])
+
         self.next_state = self.get_state()
         return self.get_obs(self.next_state), self.reward, done, self.safe_or_not, movePosition[0], self.next_state
+
+    def get_reward(self, state, action):
+
+        reward = -0.1
+        force = state[:6]
+        state = state[6:]
+
+        """Judge the force&moment is safe for object"""
+        max_abs_F_M = np.array([max(abs(force[0:3])), max(abs(force[3:6]))])
+        safe_or_not = all(max_abs_F_M < self.max_force_moment)
+
+        if safe_or_not is False:
+            reward = -1
+
+        if state[2] < self.robot_control.set_insert_pos[2]:
+            print("+++++++++++++++++++++++++++++ The Search Phase Finished!!! ++++++++++++++++++++++++++++")
+            reward = 1
+
+        return reward
+
+    def get_cost(self, state):
+
+        state = state[6:]
+        cost = - (state[2] - self.self.robot_control.set_insert_pos[2]) ** 2
+        return cost
 
     def get_state(self):
         force = self.robot_control.GetFCForce()
@@ -900,6 +929,7 @@ class env_continuous_search_control(object):
         self.state[:6] = force
         self.state[6:9] = position
         self.state[9:12] = euler
+
         return self.state
 
     def get_obs(self, current_state):
@@ -915,7 +945,15 @@ class env_continuous_search_control(object):
         # normalize the state
         scale = self.high - self.low
         final_state = (state - self.low) / scale
+
         return final_state
+
+    def inverse_state(self, obs):
+        # normalize the state
+        scale = self.high - self.low
+        state = obs * scale + self.low
+
+        return state
 
     def positon_control(self, target_position):
 
