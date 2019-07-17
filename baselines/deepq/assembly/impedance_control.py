@@ -7,7 +7,7 @@
 # @Github    ： https://github.com/hzm2016
 """
 
-from baselines.deepq.assembly.Env_robot_control import env_single_insert_control, env_insert_control
+from baselines.deepq.assembly.Env_robot_control import env_search_control
 import argparse
 import copy as cp
 import numpy as np
@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument('--path', type=str)
     parser.add_argument('--alpha', type=float, default=0.005)
     parser.add_argument('--episodes', type=int, default=150)
-    parser.add_argument('--steps', type=int, default=100)
+    parser.add_argument('--steps', type=int, default=200)
     parser.add_argument('--memory_size', type=int, default=3000)
     parser.add_argument('--data-file', type=str)
     parser.add_argument('--lambda', type=float, default=0.6)
@@ -32,31 +32,24 @@ def parse_args():
     return vars(parser.parse_args())
 
 
-args = parse_args()
-env = env_insert_control()
-env.pull_peg_up()
-obv = env.reset()
+if __name__ == '__main__':
+    args = parse_args()
+    env = env_search_control()
+    obs, state, _ = env.reset()
 
-epoch_force_pose = []
-epoch_action = []
-action = np.zeros(6)
-print(obv)
+    epoch_force_pose = []
+    epoch_action = []
+    action = np.zeros(6)
 
-for i in range(args['episodes']):
+    for i in range(args['steps']):
+        next_obs, next_state, reward, done, safe_or_not, execute_action = env.step(np.array([0., 0, 0., 0., 0., 0.]), i)
+        epoch_force_pose.append(cp.deepcopy(next_state))
+        epoch_action.append(cp.deepcopy(execute_action))
 
-    setPosition, setEuler, done = env.force_control(env.ref_force_search, obv[:6], obv[6:], i)
+        if done:
+            env.pull_peg_up()
 
-    obv = env.get_state()
-    epoch_force_pose.append(cp.deepcopy(obv))
-    action[:3] = setPosition
-    action[3:] = setEuler
-    epoch_action.append(cp.deepcopy(action))
+        print('Step::::\n', i)
 
-    np.save('../data/impedance_controller_episode_force_pose_2', epoch_force_pose)
-    np.save('../data/impedance_controller_episode_action_2', epoch_action)
-
-    if done:
-        env.pull_peg_up()
-
-print("=============================================================================")
-obv = env.get_state()
+    np.save('./data/impedance_controller_episode_states', epoch_force_pose)
+    np.save('./data/impedance_controller_episode_actions', epoch_action)

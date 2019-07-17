@@ -334,6 +334,41 @@ class DDPG(object):
 
         return critic_loss, actor_loss
 
+    def train_fake_data(self, batch):
+        # Get a batch.
+        # batch = self.memory.sample(batch_size=self.batch_size)
+
+        if self.normalize_returns and self.enable_popart:
+            old_mean, old_std, target_Q = self.sess.run([self.ret_rms.mean, self.ret_rms.std, self.target_Q], feed_dict={
+                self.obs1: batch['obs1'],
+                self.rewards: batch['rewards'],
+                self.terminals1: batch['terminals1'].astype('float32'),
+            })
+            self.ret_rms.update(target_Q.flatten())
+            self.sess.run(self.renormalize_Q_outputs_op, feed_dict={
+                self.old_std: np.array([old_std]),
+                self.old_mean: np.array([old_mean]),
+            })
+        else:
+            target_Q = self.sess.run(self.target_Q, feed_dict={
+                self.obs1: batch['obs1'],
+                self.rewards: batch['rewards'],
+                self.terminals1: batch['terminals1'].astype('float32'),
+            })
+
+        # Get all gradients and perform a synced update.
+        ops = [self.actor_grads, self.actor_loss, self.critic_grads, self.critic_loss]
+        actor_grads, actor_loss, critic_grads, critic_loss = self.sess.run(ops, feed_dict={
+            self.obs0: batch['obs0'],
+            self.actions: batch['actions'],
+            self.critic_target: target_Q,
+        })
+
+        self.actor_optimizer.update(actor_grads, stepsize=self.actor_lr)
+        self.critic_optimizer.update(critic_grads, stepsize=self.critic_lr)
+
+        return critic_loss, actor_loss
+
     def initialize(self, sess):
         self.sess = sess
         self.sess.run(tf.global_variables_initializer())

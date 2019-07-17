@@ -9,7 +9,7 @@ class DynamicsLRPrior(Dynamics):
     def __init__(self, hyperparams):
         Dynamics.__init__(self, hyperparams)
         self.Fm = None
-        self.fv = None
+        self.fv = Nonew
         self.dyn_covar = None
         self.prior = \
                 self._hyperparams['prior']['type'](self._hyperparams['prior'])

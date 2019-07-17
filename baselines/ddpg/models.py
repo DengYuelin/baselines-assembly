@@ -3,8 +3,8 @@ from baselines.common.models import get_network_builder
 
 
 class Model(object):
-    def __init__(self, name, network='mlp', **network_kwargs):
-        self.name = name
+    def __init__(self, name, num=0, network='mlp', **network_kwargs):
+        self.name = name + str(num)
         self.network_builder = get_network_builder(network)(**network_kwargs)
 
     @property
@@ -21,8 +21,8 @@ class Model(object):
 
 
 class Actor(Model):
-    def __init__(self, nb_actions, name='actor', network='mlp', **network_kwargs):
-        super().__init__(name=name, network=network, **network_kwargs)
+    def __init__(self, nb_actions, name='actor', num=0, network='mlp', **network_kwargs):
+        super().__init__(name=name + str(num), network=network, **network_kwargs)
         self.nb_actions = nb_actions
 
     def __call__(self, obs, reuse=False):
