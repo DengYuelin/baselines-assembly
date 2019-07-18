@@ -498,15 +498,16 @@ def Test_calibrate():
     # print('force', force)
     # print('=================================================================================')
 
-    # """used to search the initial position and euler; please note the other code"""
+    """used to search the initial position and euler; please note the other code"""
     print('======================== Position and Force Information =========================')
     position, euler, T = Controller.GetCalibTool()
     print('position', position)
     print('eulerang', euler)
-    # Controller.MovelineTo(Controller.set_initial_pos + [0., 0., 50.], Controller.set_initial_euler + [0., 0., 0.], 20)
-    Controller.MovelineTo(Controller.set_search_start_pos, Controller.set_search_start_euler, 10)
-    force = Controller.GetFCForce()
-    print('force', force)
+    Controller.MovelineTo(Controller.set_initial_pos + [0., 0., 50.], Controller.set_initial_euler + [0., 0., 0.], 20)
+    # Controller.MovelineTo(Controller.set_search_start_pos, Controller.set_search_start_euler, 10)
+    # Controller.MovelineTo(position + [0., 0., 2], euler + [0., 0., 0.], 10)
+    # force = Controller.GetFCForce()
+    # print('force', force)
     print('=================================================================================')
 
     # # Controller.MoveToolTo(position + [0, 0, 0], euler + [0, 0, 0.], 20)

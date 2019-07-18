@@ -30,6 +30,9 @@ PREDICTION_LABELS = ['model-based-ddpg', 'ddpg', 'Prediction-based-ddpg', 'dyna-
 # plt.rcParams['axes.unicode_minus']=False
 
 
+"""
+Plot reward steps and times
+"""
 def plot(result_path0, result_path1, result_path2, result_path3,
          file_name='./figure/comapre_different_options_reward.pdf'):
     plt.figure(figsize=(10, 8), dpi=300)
@@ -52,6 +55,30 @@ def plot(result_path0, result_path1, result_path2, result_path3,
     #            borderaxespad=0., ncol=3, fontsize=30)
 
     plt.legend(fontsize=30, labels=PREDICTION_LABELS)
+    plt.xlabel("Episodes", fontsize=34)
+    plt.ylabel("Episode Reward", fontsize=34)
+    plt.xticks(fontsize=34)
+    plt.yticks(fontsize=34)
+
+    plt.savefig(file_name)
+
+    plt.show()
+
+
+def plot_single_with_variance(result_path, file_name=''):
+    plt.figure(figsize=(10, 8), dpi=300)
+    plt.tight_layout(pad=3, w_pad=1., h_pad=0.5)
+    plt.subplots_adjust(left=0.16, bottom=0.13, right=0.98, top=0.98, wspace=0.23, hspace=0.23)
+
+    plot_data = np.load(result_path)
+
+    mean_plot_data = np.mean(plot_data, axis=0)
+    std_plot_data = np.mean(plot_data, axis=0)
+
+    plt.plot(plot_data[1, :], linewidth=3.75)
+    plt.fill_between(np.arange(len(mean_plot_data)), mean_plot_data - std_plot_data,
+                     mean_plot_data + std_plot_data, alpha=0.3)
+
     plt.xlabel("Episodes", fontsize=34)
     plt.ylabel("Episode Reward", fontsize=34)
     plt.xticks(fontsize=34)
@@ -460,31 +487,6 @@ def new_plot_compare(fuzzy_path, none_fuzz_path):
     plt.show()
 
 
-def plot_continuous_data(path):
-    raw_data = np.load(path)
-    print(raw_data)
-    plt.figure(figsize=(20, 15))
-    plt.title('Episode Reward')
-    plt.tight_layout(pad=3, w_pad=0.5, h_pad=1.0)
-    plt.subplots_adjust(left=0.1, bottom=0.15, right=0.98, top=0.9, wspace=0.23, hspace=0.22)
-    # plt.subplots_adjust(left=0.065, bottom=0.1, right=0.995, top=0.9, wspace=0.2, hspace=0.2)
-    data = np.zeros((len(raw_data), 12))
-    for j in range(len(raw_data)):
-        data[j] = raw_data[j, 0]
-    for j in range(6):
-        plt.subplot(2, 3, j + 1)
-        plt.plot(data[:, j], linewidth=2.5, color='r')
-        # plt.ylabel(YLABEL[j], fontsize=18)
-        if j>2:
-            plt.xlabel('steps', fontsize=30)
-        plt.title(YLABEL[j],fontsize=30)
-        plt.xticks(fontsize=25)
-        plt.yticks(fontsize=25)
-    # plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.4, hspace=0.2)
-    # plt.savefig('raw_data.pdf')
-    plt.show()
-
-
 def plot_comparision_hist(result_path_1, result_path_2, file_name):
 
     result_data_1 = np.load(result_path_1)
@@ -522,11 +524,14 @@ if __name__ == "__main__":
     #      './fifth_data/train_reward_1_option_normal_0.2_episodes_150.npy',
     #      './fifth_data/train_reward_pdc_normal_0.2_episodes_150.npy')
 
-    plot('train_reward_mb_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
-         'train_reward_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
-         'train_reward_ddpg_normal_0.2_episodes_100_fuzzy.npy',
-         'train_reward_dyna_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
-         file_name='./figures/mb_ddpg.pdf')
+    plot_single_with_variance('train_reward_dyna_nn_ddpg_normal_0.2_epochs_5_episodes_100_none_fuzzy.npy',
+                              file_name='./figures/variance.pdf')
+
+    # plot('train_reward_mb_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
+    #      'train_reward_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
+    #      'train_reward_ddpg_normal_0.2_episodes_100_fuzzy.npy',
+    #      'train_reward_dyna_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
+    #      file_name='./figures/mb_ddpg.pdf')
 
     # data = np.load('./pdc_data/train_states_pdc_normal_0.2_episodes_150.npy')
     # print(data[0])

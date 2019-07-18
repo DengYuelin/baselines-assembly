@@ -1,2 +1,2 @@
-model_checkpoint_path: "train_model_dyna_nn_ddpg_normal_0.2_episodes_100_none_fuzzy"
-all_model_checkpoint_paths: "train_model_dyna_nn_ddpg_normal_0.2_episodes_100_none_fuzzy"
+model_checkpoint_path: "train_model_dyna_nn_ddpg_normal_0.2_epochs_5_episodes_100_none_fuzzy"
+all_model_checkpoint_paths: "train_model_dyna_nn_ddpg_normal_0.2_epochs_5_episodes_100_none_fuzzy"
