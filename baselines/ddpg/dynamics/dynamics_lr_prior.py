@@ -1,7 +1,7 @@
 """ This file defines linear regression with an arbitrary prior. """
 import numpy as np
 from baselines.ddpg.dynamics.dynamics import Dynamics
-from baselines.ddpg.algorithm.algorithm_utils import gauss_fit_joint_prior
+from baselines.ddpg.dynamics.utility.gmm import gauss_fit_joint_prior
 
 
 class DynamicsLRPrior(Dynamics):
@@ -9,15 +9,15 @@ class DynamicsLRPrior(Dynamics):
     def __init__(self, hyperparams):
         Dynamics.__init__(self, hyperparams)
         self.Fm = None
-        self.fv = Nonew
+        self.fv = None
         self.dyn_covar = None
         self.prior = \
                 self._hyperparams['prior']['type'](self._hyperparams['prior'])
 
-    def update_prior(self, samples):
+    def update_prior(self, X, U):
         """ Update dynamics prior. """
-        X = samples.get_X()
-        U = samples.get_U()
+        # X = samples.get_X()
+        # U = samples.get_U()
         self.prior.update(X, U)
 
     def get_prior(self):
@@ -58,3 +58,7 @@ class DynamicsLRPrior(Dynamics):
             self.dyn_covar[t, :, :] = dyn_covar
 
         return self.Fm, self.fv, self.dyn_covar
+
+    # def predict(self, Fv, fv, dyn_cover):
+    #
+    #     self.sigma = np.zeros((Fv.shape[0]), )

@@ -1,9 +1,7 @@
 """ This file defines the GMM prior for dynamics estimation. """
 import copy
 import logging
-
 import numpy as np
-
 from baselines.ddpg.dynamics.config import DYN_PRIOR_GMM
 from baselines.ddpg.dynamics.utility.gmm import GMM
 

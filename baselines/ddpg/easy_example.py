@@ -23,3 +23,5 @@ a = np.zeros(12, dtype=np.float32)
 a[11] = 1
 print(a[-5:])
 print(a.shape)
+
+print(slice(12))
