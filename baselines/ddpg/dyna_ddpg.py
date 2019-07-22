@@ -121,10 +121,10 @@ def learn(network,
 
     nb_actions = env.action_space.shape[0]
     memory = Memory(limit=int(1e5), action_shape=env.action_space.shape[0], observation_shape=env.observation_space.shape)
-
-    Fm = None
-    fv = None
-    dyn_covar =None
+    #
+    # Fm = None
+    # fv = None
+    # dyn_covar =None
     length = 100
     if model_based:
         """ store fake_data"""
@@ -262,6 +262,7 @@ def learn(network,
                         pred_x[:, 12:] = m_action
                         # m_new_obs = dynamic_model.predict(pred_x)[0]
                         if t_rollout < length:
+                            print("=======================================================================", Fm)
                             m_new_obs = predict(Fm, fv, obs, action, t_rollout)
                             """ get real reward """
                             state = env.inverse_state(m_new_obs)
@@ -269,8 +270,13 @@ def learn(network,
                             # m_reward = reward_model.predict(pred_x)[0]
                             agent.store_transition(obs, m_action, m_reward, m_new_obs, done)
 
-            """ generate new data and fit model"""
-            if cycle > nb_model_learning and cycle//nb_horizon == 0:
+            dynamic_episode_steps[cycle] = t_rollout
+            """ 
+            generate new data and fit model
+             and cycle//nb_horizon == 0
+            """
+            if model_based and cycle > nb_model_learning:
+                logger.info("==============================  Model Fit !!! ===============================")
 
                 dynamic_index = dynamic_episode_steps[-nb_horizon:cycle]
                 length = min(dynamic_index)
@@ -279,6 +285,7 @@ def learn(network,
 
                 lr_dynamic.update_prior(dynamic_X, dynamic_U)
                 Fm, fv, dyn_covar = lr_dynamic.fit(dynamic_X, dynamic_U)
+                print(Fm)
 
             # """ generate new data and fit model"""
             # if model_based and cycle > nb_model_learning:
@@ -386,11 +393,11 @@ if __name__ == '__main__':
           model_path=model_path,
           model_name=model_name,
           restore=False,
-          nb_horizon=5,
+          nb_horizon=2,
           nb_epochs=5,
           nb_sample_steps=50,
           nb_samples_extend=10,
-          nb_model_learning=4,
+          nb_model_learning=3,
           nb_epoch_cycles=100,
           nb_train_steps=60,
           nb_rollout_steps=200)
