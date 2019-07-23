@@ -21,9 +21,11 @@ Title = ["X axis force", "Y axis force", "Z axis force",
 COLORS = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'purple', 'pink',
         'brown', 'orange', 'teal', 'coral', 'lightblue', 'lime', 'lavender', 'turquoise',
         'darkgreen', 'tan', 'salmon', 'gold', 'lightpurple', 'darkred', 'darkblue']
+
 FONT_SIZE = 34
+LINEWIDTH = 4.
 """================================================================================="""
-PREDICTION_LABELS = ['model-based-ddpg', 'ddpg', 'Prediction-based-ddpg', 'dyna-ddpg']
+PREDICTION_LABELS = ['MB-DDPG', 'DDPG', 'VPB-DDPG', 'Dyna-DDPG']
 
 """ chinese """
 # plt.rcParams['font.sans-serif']=['SimHei']
@@ -33,36 +35,29 @@ PREDICTION_LABELS = ['model-based-ddpg', 'ddpg', 'Prediction-based-ddpg', 'dyna-
 """
 Plot reward steps and times
 """
-def plot(result_path0, result_path1, result_path2, result_path3,
+def plot(result_paths,
          file_name='./figure/comapre_different_options_reward.pdf'):
     plt.figure(figsize=(10, 8), dpi=300)
     plt.tight_layout(pad=3, w_pad=1., h_pad=0.5)
-    plt.subplots_adjust(left=0.16, bottom=0.13, right=0.98, top=0.98, wspace=0.23, hspace=0.23)
+    plt.subplots_adjust(left=0.16, bottom=0.13, right=0.96, top=0.86, wspace=0.23, hspace=0.23)
 
     # plt.title('Compare Single DDPG with Six Options', fontsize=30)
 
-    prediction_result_0 = np.load(result_path0)
-    prediction_result_1 = np.load(result_path1)
-    prediction_result_2 = np.load(result_path2)
-    prediction_result_3 = np.load(result_path3)
+    for i in range(len(result_paths)):
+        prediction_result = np.load(result_paths['path_' + str(i)])
+        plt.plot(prediction_result, linewidth=LINEWIDTH)
 
-    plt.plot(prediction_result_0, linewidth=4., label='Six-options')
-    plt.plot(prediction_result_1, linewidth=4., label='Two-options')
-    plt.plot(prediction_result_2, linewidth=4., label='Single-option')
-    plt.plot(prediction_result_3, linewidth=4., label='Admittance control')
+    plt.legend(labels=PREDICTION_LABELS, loc=2, bbox_to_anchor=(0.04, 1.17),
+               borderaxespad=0., ncol=2, fontsize=28)
+    # plt.legend(fontsize=30, labels=PREDICTION_LABELS)
 
-    # plt.legend(labels=[], loc=2, bbox_to_anchor=(0.1, 1.15),
-    #            borderaxespad=0., ncol=3, fontsize=30)
-
-    plt.legend(fontsize=30, labels=PREDICTION_LABELS)
-    plt.xlabel("Episodes", fontsize=34)
-    plt.ylabel("Episode Reward", fontsize=34)
-    plt.xticks(fontsize=34)
-    plt.yticks(fontsize=34)
+    plt.xlabel("Episodes", fontsize=FONT_SIZE)
+    plt.ylabel("Episode Reward", fontsize=FONT_SIZE)
+    plt.xticks(fontsize=FONT_SIZE)
+    plt.yticks(fontsize=FONT_SIZE)
 
     plt.savefig(file_name)
-
-    plt.show()
+    # plt.show()
 
 
 def plot_single_with_variance(result_path, file_name=''):
@@ -487,46 +482,53 @@ def new_plot_compare(fuzzy_path, none_fuzz_path):
     plt.show()
 
 
-def plot_comparision_hist(result_path_1, result_path_2, file_name):
-
-    result_data_1 = np.load(result_path_1)
-    result_data_2 = np.load(result_path_2)
+def plot_comparision_hist(result_paths, file_name=''):
 
     plt.figure(figsize=(10, 8), dpi=300)
-    plt.subplot(1, 1, 1)
-    plt.tight_layout(pad=4.8, w_pad=1., h_pad=1.)
-    plt.subplots_adjust(left=0.1, bottom=0.15, right=0.98, top=0.98, wspace=0.23, hspace=0.22)
-    plt.hist(result_data_1, bins=40, histtype="stepfilled", label='After Training')
-    plt.hist(result_data_2, bins=40, histtype="stepfilled", label='Before Training', color='red')
+    plt.tight_layout(pad=3, w_pad=1., h_pad=0.5)
+    plt.subplots_adjust(left=0.16, bottom=0.13, right=0.96, top=0.86, wspace=0.23, hspace=0.23)
 
+    for i in range(len(result_paths)):
+        result_data = np.load(result_paths['path_' + str(i)])
+        plt.hist(result_data, bins=30, histtype="stepfilled")
+
+    plt.legend(labels=PREDICTION_LABELS, loc=2, bbox_to_anchor=(0.04, 1.17),
+               borderaxespad=0., ncol=2, fontsize=28)
     plt.yticks(fontsize=FONT_SIZE)
-    plt.xticks(np.arange(10., 35, 5), fontsize=FONT_SIZE)
+    plt.xticks(np.arange(20., 45, 5), fontsize=FONT_SIZE)
     plt.ylabel('Frequency', fontsize=FONT_SIZE)
     plt.xlabel('Episode time(s)', fontsize=FONT_SIZE)
     plt.grid(axis="y")
-    plt.legend(fontsize=30, loc='best')
+    # plt.legend(fontsize=30, loc='best', labels=PREDICTION_LABELS)
 
     plt.savefig(file_name)
-    plt.show()
+    # plt.show()
 
 
 if __name__ == "__main__":
-    # samples = np.load('./second_data/train_step_none_fuzzy.npy')
-    # print(samples)
-    # plot_compare('./episode_rewards_fuzzy.npy', './episode_rewards_none_fuzzy.npy')
-    # plot('./second_data/train_step_fuzzy_1.npy')
-    # plot('./fourth_data/train_reward_none_fuzzy_none_model_test_normal_0.2_episodes_150.npy')
-    # print(data)
-    # plot('./fourth_data/cc',
-    #      './fourth_data/train_reward_none_fuzzy_none_model_ddpg_normal_0.2_episodes_100.npy')
+
+    result_reward_paths = {'path_0': 'train_reward_mb_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
+                    'path_1': 'train_reward_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
+                    'path_2': 'train_reward_ddpg_normal_0.2_episodes_100_fuzzy.npy',
+                    'path_3': 'train_reward_dyna_ddpg_normal_0.2_episodes_100_none_fuzzy.npy'}
+
+    result_times_paths = {'path_0': 'train_times_mb_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
+                           'path_1': 'train_times_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
+                           'path_2': 'train_times_ddpg_normal_0.2_episodes_100_fuzzy.npy',
+                           'path_3': 'train_times_dyna_ddpg_normal_0.2_episodes_100_none_fuzzy.npy'}
+
+    plot(result_reward_paths, file_name='./figures/episode_reward_ddpg.pdf')
+    plot_comparision_hist(result_times_paths, file_name='./figures/episode_assembly_time_ddpg.pdf')
+
+    """ option data """
     # plot('./fifth_data/train_reward_option_normal_0.2_episodes_150.npy',
     #      './fifth_data/train_reward_2_option_normal_0.2_episodes_150.npy',
     #      './fifth_data/train_reward_1_option_normal_0.2_episodes_150.npy',
     #      './fifth_data/train_reward_pdc_normal_0.2_episodes_150.npy')
 
-    plot_single_with_variance('train_reward_dyna_nn_ddpg_normal_0.2_epochs_5_episodes_100_none_fuzzy.npy',
-                              file_name='./figures/variance.pdf')
-
+    # plot_single_with_variance('train_reward_dyna_nn_ddpg_normal_0.2_epochs_5_episodes_100_none_fuzzy.npy',
+    #                           file_name='./figures/variance.pdf')
+    #
     # plot('train_reward_mb_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
     #      'train_reward_ddpg_normal_0.2_episodes_100_none_fuzzy.npy',
     #      'train_reward_ddpg_normal_0.2_episodes_100_fuzzy.npy',

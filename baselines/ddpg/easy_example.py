@@ -24,4 +24,7 @@ a[11] = 1
 print(a[-5:])
 print(a.shape)
 
-print(slice(12))
+a = np.zeros((4, 2), dtype=np.float32)
+b = np.array([1., 2.])
+c = np.array([2, 2])
+print((a + b)/c)
