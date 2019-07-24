@@ -11,18 +11,18 @@ class env_search_control(object):
         self.observation_dim = 12
         self.action_dim = 6
 
-        """state"""
+        """ state """
         self.state = np.zeros(self.observation_dim)
         self.next_state = np.zeros(self.observation_dim)
         self.init_state = np.zeros(self.observation_dim)
 
-        """action"""
+        """ action """
         self.action = np.zeros(self.action_dim)
         self.action_low_bound = np.array([-0.2, -0.2, -0.2, -0.2, -0.2, -0.2])
         self.action_high_bound = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
         self.fuzzy_control = fuzzy
 
-        """reward"""
+        """ reward """
         self.step_max = step_max
         self.step_max_pos = 15
         self.reward = 1.
@@ -91,6 +91,7 @@ class env_search_control(object):
 
         self.set_insert_goal_pos = np.array([1453.2509, 73.2577, 980])
         self.set_insert_goal_euler = np.array([179.8938, 0.9185, 1.0311])
+        self.set_insert_goal = np.array([1453.2509, 73.2577, 980, 179.8938, 0.9185, 1.0311])
 
         """ random number generator """
         self.rng = np.random.RandomState(5)
@@ -194,6 +195,12 @@ class env_search_control(object):
         final_state = (state - self.state_low) / scale
 
         return final_state
+
+    """ ilqg cost """
+    def get_running_cost(self, x, u):
+
+        target_x = self.code_state(self.set_insert_goal)
+        return (x[8] - target_x[2]) + 1/2 * np.linalg.norm(u)
 
     """ denormalize state """
     def decode_state(self, obs):

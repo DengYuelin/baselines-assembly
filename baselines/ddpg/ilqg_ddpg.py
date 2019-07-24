@@ -86,7 +86,7 @@ def train(network,
           restore=False,
           dyna_learning=False,
           seed=None,
-          nb_epochs=5,   # with default settings, perform 1M steps total
+          nb_epochs=5, # with default settings, perform 1M steps total
           nb_sample_cycle=5,
           nb_epoch_cycles=150,
           nb_rollout_steps=400,
@@ -94,7 +94,7 @@ def train(network,
           nb_sample_steps=50,
           nb_samples_extend=5,
           reward_scale=1.0,
-          noise_type='normal_0.2',  #'adaptive-param_0.2',  ou_0.2, normal_0.2
+          noise_type='normal_0.2', #'adaptive-param_0.2',  ou_0.2, normal_0.2
           normalize_returns=False,
           normalize_observations=True,
           critic_l2_reg=1e-2,
@@ -122,9 +122,55 @@ def train(network,
             kernel = ConstantKernel(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
             dynamic_model = GaussianProcessRegressor(kernel=kernel)
             reward_model = GaussianProcessRegressor(kernel=kernel)
+
+            def predict(Fm, fv, x_t, u_t, t):
+
+                return Fm[t, :, :].dot(np.concatenate((x_t, u_t))) + fv[t, :]
+
+            def dynamic_learning():
+
+                """ load and process data """
+                states = np.load('./train_states_noisy_ddpg_normal_0.2_epochs_5_episodes_100_none_fuzzy.npy')
+
+                obs = np.zeros((100, 40, 12), dtype=np.float32)
+                next_obs = np.zeros((100, 40, 12), dtype=np.float32)
+                action = np.zeros((100, 40, 6), dtype=np.float32)
+                for i in range(100):
+                    for j in range(40):
+                        obs[i, j, :] = states[0][i][j][0]
+                        action[i, j, :] = states[0][i][j][1]
+                        next_obs[i, j, :] = states[0][i][j][3]
+
+                nn_obs = obs.reshape((4000, 12))
+                nn_action = action.reshape((4000, 6))
+                nn_next_obs = next_obs.reshape((4000, 12))
+
+                """ normalize the sample data """
+                vec_max = np.zeros(12)
+                vec_min = np.zeros(12)
+                for i in range(12):
+                    vec_max[i] = max(nn_obs[:, i])
+                    vec_min[i] = min(nn_obs[:, i])
+                print('max', vec_max)
+                print('min', vec_min)
+                nn_obs = (nn_obs - vec_min) / (vec_max - vec_min)
+                nn_next_obs = (nn_next_obs - vec_min) / (vec_max - vec_min)
+
+                obs = nn_obs.reshape((100, 40, 12))
+                next_obs = nn_next_obs.reshape((100, 40, 12))
+
+                """ gaussian model """
+                gmm_dynamic = DynamicsLRPrior(algorithm['dynamics'])
+
+                gmm_dynamic.update_prior(obs[:100, :, :], action[:100, :, :])
+
+                Fm_0, fv_0, dyn_covar_0 = gmm_dynamic.fit(obs[:100, :, :], action[:100, :, :])
+
+                return Fm_0, fv_0, dyn_covar_0
+
         elif model_type == 'linear':
             dynamic_model = LinearRegression()
-            reward_model = LinearRegression()
+            # reward_model = LinearRegression()
         elif model_type == 'mlp':
             dynamic_model = MLPRegressor(hidden_layer_sizes=(100, ), activation='relu', solver='adam',
                                          alpha=0.0001, batch_size='auto', learning_rate='constant', learning_rate_init=0.001, power_t=0.5,
@@ -185,59 +231,14 @@ def train(network,
         sess.graph.finalize()
     agent.reset()
 
-    def predict(Fm, fv, x_t, u_t, t):
-
-        return Fm[t, :, :].dot(np.concatenate((x_t, u_t))) + fv[t, :]
-
-    def dynamic_learning():
-
-        """ load and process data """
-        states = np.load('./train_states_noisy_ddpg_normal_0.2_epochs_5_episodes_100_none_fuzzy.npy')
-
-        obs = np.zeros((100, 40, 12), dtype=np.float32)
-        next_obs = np.zeros((100, 40, 12), dtype=np.float32)
-        action = np.zeros((100, 40, 6), dtype=np.float32)
-        for i in range(100):
-            for j in range(40):
-                obs[i, j, :] = states[0][i][j][0]
-                action[i, j, :] = states[0][i][j][1]
-                next_obs[i, j, :] = states[0][i][j][3]
-
-        nn_obs = obs.reshape((4000, 12))
-        nn_action = action.reshape((4000, 6))
-        nn_next_obs = next_obs.reshape((4000, 12))
-
-        """ normalize the sample data """
-        vec_max = np.zeros(12)
-        vec_min = np.zeros(12)
-        for i in range(12):
-            vec_max[i] = max(nn_obs[:, i])
-            vec_min[i] = min(nn_obs[:, i])
-        print('max', vec_max)
-        print('min', vec_min)
-        nn_obs = (nn_obs - vec_min) / (vec_max - vec_min)
-        nn_next_obs = (nn_next_obs - vec_min) / (vec_max - vec_min)
-
-        obs = nn_obs.reshape((100, 40, 12))
-        next_obs = nn_next_obs.reshape((100, 40, 12))
-
-        """ gaussian model """
-        gmm_dynamic = DynamicsLRPrior(algorithm['dynamics'])
-
-        gmm_dynamic.update_prior(obs[:100, :, :], action[:100, :, :])
-
-        Fm_0, fv_0, dyn_covar_0 = gmm_dynamic.fit(obs[:100, :, :], action[:100, :, :])
-
-        return Fm_0, fv_0, dyn_covar_0
-
     def f(x, u):
         assert len(x) == env.observation_dim, x.shape
         assert len(u) == env.observation_dim, u.shape
-        x_, _, _, _ = predict(x, u)
+        x_ = dynamic_model.predict(x, u)
         return x_
 
     def l(x, u):
-        reward = env.get_running_cost(u, x)
+        reward = env.get_running_cost(x, u)
         return reward
 
     def l_terminal(x):
@@ -266,8 +267,10 @@ def train(network,
         for cycle in range(nb_epoch_cycles):
 
             start_time = time.time()
+
             obs, state, done = env.reset()
             obs_reset = cp.deepcopy(obs)
+
             episode_reward = 0.
             episode_step = 0
             episode_states = []
@@ -275,26 +278,30 @@ def train(network,
             for t_rollout in range(nb_rollout_steps):
                 logger.info("================== The {} steps finish  !!! ===================".format(t_rollout))
 
-                """ action derived from ilqg """
-                # Number of time-steps in trajectory.
-                N = 1
-                # Initial state.
-                x_init = obs
-                # Random initial action path.
-                u_init = np.array([ilqr_a_init])
-
-                ilqr = iLQR(dynamics, cost, N)
-                xs, us = ilqr.fit(x_init, u_init)
-
-                a_raw = us[0]
-                a_raw[1] = -abs(a_raw[1])
-                a_raw = np.tanh(a_raw)
-
-                noise = action_noise(stddev)
-                action = a_raw + noise
-
                 """ Predict next action """
                 action_ddpg, q, _, _ = agent.step(obs, stddev, apply_noise=True, compute_Q=True)
+
+                """ action derived from ilqg """
+                if cycle > (nb_model_learning + 1):
+                    # Number of time-steps in trajectory.
+                    N = 1
+                    # Initial state.
+                    x_init = obs
+                    # Random initial action path.
+                    u_init = np.array([ilqr_a_init])
+
+                    ilqr = iLQR(dynamics, cost, N)
+                    xs, us = ilqr.fit(x_init, u_init)
+
+                    a_raw = us[0]
+                    a_raw[1] = -abs(a_raw[1])
+                    a_raw = np.tanh(a_raw)
+
+                    noise = action_noise(stddev)
+                    action = a_raw + noise
+
+                else:
+                    action = action_ddpg
 
                 """ Execute the derived action """
                 new_obs, next_state, r, done, safe_or_not, final_action = env.step(max_action * action, t_rollout)
@@ -327,7 +334,7 @@ def train(network,
                 input_y_obs = memory.observations1.data[:memory.nb_entries]
                 input_y_reward = memory.rewards.data[:memory.nb_entries]
                 dynamic_model.fit(input_x, input_y_obs)
-                reward_model.fit(input_x, input_y_reward)
+                # reward_model.fit(input_x, input_y_reward)
 
                 if dyna_learning:
                     logger.info("=========================  Collect data !!! =================================")
@@ -382,6 +389,7 @@ def train(network,
                 epoch_actor_losses.append(al)
                 agent.update_target_net()
 
+
         epochs_states.append(cp.deepcopy(epoch_episode_states))
 
         # save data
@@ -396,7 +404,7 @@ def train(network,
 
 if __name__ == '__main__':
 
-    algorithm_name = 'noisy_extend_gp_ddpg'
+    algorithm_name = 'noisy_ilqg_ddpg'
     env = env_search_control(step_max=200, fuzzy=False, add_noise=False)
     data_path = './prediction_data/'
     model_path = './prediction_model/'
@@ -421,10 +429,11 @@ if __name__ == '__main__':
         nb_epochs=5,
         nb_sample_steps=50,
         nb_samples_extend=10,
-        nb_model_learning=3,
+        nb_model_learning=30,
         nb_epoch_cycles=100,
         nb_train_steps=60,
-        nb_rollout_steps=200)
+        nb_rollout_steps=200
+    )
 
 
 
