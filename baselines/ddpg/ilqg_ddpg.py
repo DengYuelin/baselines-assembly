@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+# @Time    : 08/06/19 4:47 PM
+# @Author  : ZHIMIN HOU
+# @FileName: iLQG.py
+# @Software: PyCharm
+# @Github    ： https://github.com/hzm2016
+"""
 import time
 
 from baselines.ddpg.ddpg_learner import DDPG
@@ -11,18 +19,66 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.linear_model import LinearRegression
 from sklearn.neural_network import MLPRegressor
 
-import baselines.common.tf_util as U
+from iLQG import iLQR, fd_Cost, fd_Dynamics, myCost
 
+from baselines.ddpg.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
+from baselines.ddpg.dynamics.dynamics_lr_prior import DynamicsLRPrior
+from baselines.ddpg.dynamics.dynamics_lr import DynamicsLR
+
+import baselines.common.tf_util as U
 from baselines import logger
 import numpy as np
 import copy as cp
 
+algorithm = {
+    'iterations': 10,
+    'lg_step_schedule': np.array([1e-4, 1e-3, 1e-2, 1e-1]),
+    'policy_dual_rate': 0.1,
+    'ent_reg_schedule': np.array([1e-3, 1e-3, 1e-2, 1e-1]),
+    'fixed_lg_step': 3,
+    'kl_step': 5.0,
+    'init_pol_wt': 0.01,
+    'min_step_mult': 0.01,
+    'max_step_mult': 1.0,
+    'sample_decrease_var': 0.05,
+    'sample_increase_var': 0.1,
+    'exp_step_increase': 2.0,
+    'exp_step_decrease': 0.5,
+    'exp_step_upper': 0.5,
+    'exp_step_lower': 1.0,
+    'max_policy_samples': 6,
+    'policy_sample_mode': 'add',
+}
 
-def learn(network,
+algorithm['dynamics'] = {
+        'type': DynamicsLRPrior,
+        'regularization': 1e-6,
+        'prior': {
+            'type': DynamicsPriorGMM,
+            'max_clusters': 20,
+            'min_samples_per_cluster': 40,
+            'max_samples': 20,
+        },
+    }
+
+algorithm_lr = {
+        'type': DynamicsLR,
+        'regularization': 1e-6,
+        # 'prior': {
+        #     'type': DynamicsPriorGMM,
+        #     'max_clusters': 20,
+        #     'min_samples_per_cluster': 40,
+        #     'max_samples': 20,
+        # },
+    }
+
+
+def train(network,
           env,
           data_path='',
           model_path='./model/',
           model_name='ddpg_none_fuzzy_150',
+          algorithm_name='',
           file_name='test',
           model_based=False,
           memory_extend=False,
@@ -54,7 +110,8 @@ def learn(network,
           **network_kwargs):
 
     nb_actions = env.action_space.shape[0]
-    memory = Memory(limit=int(1e5), action_shape=env.action_space.shape[0], observation_shape=env.observation_space.shape)
+    memory = Memory(limit=int(1e5), action_shape=env.action_space.shape[0],
+                    observation_shape=env.observation_space.shape)
 
     if model_based:
         """ store fake_data"""
@@ -128,11 +185,75 @@ def learn(network,
         sess.graph.finalize()
     agent.reset()
 
+    def predict(Fm, fv, x_t, u_t, t):
+
+        return Fm[t, :, :].dot(np.concatenate((x_t, u_t))) + fv[t, :]
+
+    def dynamic_learning():
+
+        """ load and process data """
+        states = np.load('./train_states_noisy_ddpg_normal_0.2_epochs_5_episodes_100_none_fuzzy.npy')
+
+        obs = np.zeros((100, 40, 12), dtype=np.float32)
+        next_obs = np.zeros((100, 40, 12), dtype=np.float32)
+        action = np.zeros((100, 40, 6), dtype=np.float32)
+        for i in range(100):
+            for j in range(40):
+                obs[i, j, :] = states[0][i][j][0]
+                action[i, j, :] = states[0][i][j][1]
+                next_obs[i, j, :] = states[0][i][j][3]
+
+        nn_obs = obs.reshape((4000, 12))
+        nn_action = action.reshape((4000, 6))
+        nn_next_obs = next_obs.reshape((4000, 12))
+
+        """ normalize the sample data """
+        vec_max = np.zeros(12)
+        vec_min = np.zeros(12)
+        for i in range(12):
+            vec_max[i] = max(nn_obs[:, i])
+            vec_min[i] = min(nn_obs[:, i])
+        print('max', vec_max)
+        print('min', vec_min)
+        nn_obs = (nn_obs - vec_min) / (vec_max - vec_min)
+        nn_next_obs = (nn_next_obs - vec_min) / (vec_max - vec_min)
+
+        obs = nn_obs.reshape((100, 40, 12))
+        next_obs = nn_next_obs.reshape((100, 40, 12))
+
+        """ gaussian model """
+        gmm_dynamic = DynamicsLRPrior(algorithm['dynamics'])
+
+        gmm_dynamic.update_prior(obs[:100, :, :], action[:100, :, :])
+
+        Fm_0, fv_0, dyn_covar_0 = gmm_dynamic.fit(obs[:100, :, :], action[:100, :, :])
+
+        return Fm_0, fv_0, dyn_covar_0
+
+    def f(x, u):
+        assert len(x) == env.observation_dim, x.shape
+        assert len(u) == env.observation_dim, u.shape
+        x_, _, _, _ = predict(x, u)
+        return x_
+
+    def l(x, u):
+        reward = env.get_running_cost(u, x)
+        return reward
+
+    def l_terminal(x):
+        reward = env.get_reward_terminal(x)
+        return reward
+
+    dynamics = fd_Dynamics(f, env.observation_dim, env.action_dim)
+    cost = fd_Cost(l, l_terminal, env.observation_dim, env.action_dim)
+
     episodes = 0
     epochs_rewards = np.zeros((nb_epochs, nb_epoch_cycles), dtype=np.float32)
     epochs_times = np.zeros((nb_epochs, nb_epoch_cycles), dtype=np.float32)
     epochs_steps = np.zeros((nb_epochs, nb_epoch_cycles), dtype=np.float32)
     epochs_states = []
+    ilqr_a_init = np.zeros(env.action_dim)
+
     for epoch in range(nb_epochs):
         logger.info("======================== The {} epoch start !!! =========================".format(epoch))
         epoch_episode_rewards = []
@@ -143,6 +264,7 @@ def learn(network,
         epoch_qs = []
         epoch_episodes = 0
         for cycle in range(nb_epoch_cycles):
+
             start_time = time.time()
             obs, state, done = env.reset()
             obs_reset = cp.deepcopy(obs)
@@ -153,9 +275,28 @@ def learn(network,
             for t_rollout in range(nb_rollout_steps):
                 logger.info("================== The {} steps finish  !!! ===================".format(t_rollout))
 
-                """ Predict next action """
-                action, q, _, _ = agent.step(obs, stddev, apply_noise=True, compute_Q=True)
+                """ action derived from ilqg """
+                # Number of time-steps in trajectory.
+                N = 1
+                # Initial state.
+                x_init = obs
+                # Random initial action path.
+                u_init = np.array([ilqr_a_init])
 
+                ilqr = iLQR(dynamics, cost, N)
+                xs, us = ilqr.fit(x_init, u_init)
+
+                a_raw = us[0]
+                a_raw[1] = -abs(a_raw[1])
+                a_raw = np.tanh(a_raw)
+
+                noise = action_noise(stddev)
+                action = a_raw + noise
+
+                """ Predict next action """
+                action_ddpg, q, _, _ = agent.step(obs, stddev, apply_noise=True, compute_Q=True)
+
+                """ Execute the derived action """
                 new_obs, next_state, r, done, safe_or_not, final_action = env.step(max_action * action, t_rollout)
 
                 if safe_or_not is False:
@@ -163,36 +304,26 @@ def learn(network,
 
                 episode_reward += r
                 episode_step += 1
-                episode_states.append([cp.deepcopy(state), cp.deepcopy(final_action), np.array(cp.deepcopy(r)), cp.deepcopy(next_state)])
+                episode_states.append(
+                    [cp.deepcopy(state), cp.deepcopy(final_action), np.array(cp.deepcopy(r)), cp.deepcopy(next_state)])
 
                 epoch_actions.append(action)
                 epoch_qs.append(q)
 
                 agent.store_transition(obs, action, r, new_obs, done)
+
+                ilqr_a_init = action_ddpg.copy()
                 obs = new_obs
                 state = next_state
 
                 if done:
                     break
 
-                """ extend the memory """
-                if model_based and cycle > (nb_model_learning + 1) and memory_extend:
-                    pred_x = np.zeros((1, 18), dtype=np.float32)
-                    for j in range(nb_samples_extend):
-                        m_action, _, _, _ = agent.step(obs, stddev, apply_noise=True, compute_Q=False)
-                        pred_x[:, :12] = obs
-                        pred_x[:, 12:] = m_action
-                        m_new_obs = dynamic_model.predict(pred_x)[0]
-                        """ get real reward """
-                        # state = env.inverse_state(m_new_obs)
-                        # m_reward = env.get_reward(state, m_action)
-                        m_reward = reward_model.predict(pred_x)[0]
-                        agent.store_transition(obs, m_action, m_reward, m_new_obs, done)
-
             """ generate new data and fit model"""
             if model_based and cycle > nb_model_learning:
                 logger.info("==============================  Model Fit !!! ===============================")
-                input_x = np.concatenate((memory.observations0.data[:memory.nb_entries], memory.actions.data[:memory.nb_entries]), axis=1)
+                input_x = np.concatenate(
+                    (memory.observations0.data[:memory.nb_entries], memory.actions.data[:memory.nb_entries]), axis=1)
                 input_y_obs = memory.observations1.data[:memory.nb_entries]
                 input_y_reward = memory.rewards.data[:memory.nb_entries]
                 dynamic_model.fit(input_x, input_y_obs)
@@ -228,8 +359,10 @@ def learn(network,
             epochs_steps[epoch, cycle] = episode_step
             epochs_times[epoch, cycle] = cp.deepcopy(duration)
 
-            logger.info("============================= The Episode_Times:: {}!!! ============================".format(epoch_episode_rewards))
-            logger.info("============================= The Episode_Times:: {}!!! ============================".format(epoch_episode_times))
+            logger.info("============================= The Episode_Reward:: {}!!! ============================".format(
+                epoch_episode_rewards))
+            logger.info("============================= The Episode_Times:: {}!!! ============================".format(
+                epoch_episode_times))
 
             epoch_episodes += 1
             episodes += 1
@@ -239,7 +372,7 @@ def learn(network,
             epoch_critic_losses = []
             epoch_adaptive_distances = []
             for t_train in range(nb_train_steps):
-                logger.info("")
+                logger.info(" ============================ DDPG-Training =========================")
                 # Adapt param noise, if necessary.
                 if memory.nb_entries >= batch_size and t_train % param_noise_adaption_interval == 0:
                     distance = agent.adapt_param_noise()
@@ -249,63 +382,50 @@ def learn(network,
                 epoch_actor_losses.append(al)
                 agent.update_target_net()
 
-            """ planning training """
-            if model_based and cycle > (nb_model_learning + 1) and dyna_learning:
-                for t_train in range(nb_train_steps):
-                    # setting for adapt param noise, if necessary.
-                    if fake_memory.nb_entries >= batch_size and t_train % param_noise_adaption_interval == 0:
-                        distance = agent.adapt_param_noise()
-                        epoch_adaptive_distances.append(distance)
-                    batch = fake_memory.sample(batch_size=batch_size)
-                    fake_cl, fake_al = agent.train_fake_data(batch)
-                    epoch_critic_losses.append(fake_cl)
-                    epoch_actor_losses.append(fake_al)
-                    agent.update_target_net()
-
         epochs_states.append(cp.deepcopy(epoch_episode_states))
 
-        # # save data
+        # save data
         np.save(data_path + 'train_reward_' + algorithm_name + '_' + noise_type + file_name, epochs_rewards)
         np.save(data_path + 'train_step_' + algorithm_name + '_' + noise_type + file_name, epochs_steps)
         np.save(data_path + 'train_states_' + algorithm_name + '_' + noise_type + file_name, epochs_states)
         np.save(data_path + 'train_times_' + algorithm_name + '_' + noise_type + file_name, epochs_times)
 
-    # # agent save
+    # agent save
     agent.store(model_path + 'train_model_' + algorithm_name + '_' + noise_type + file_name)
 
 
 if __name__ == '__main__':
 
-    algorithm_name = 'dyna_nn_ddpg'
+    algorithm_name = 'noisy_extend_gp_ddpg'
     env = env_search_control(step_max=200, fuzzy=False, add_noise=False)
     data_path = './prediction_data/'
     model_path = './prediction_model/'
-    file_name = '_epochs_5_episodes_100_none_fuzzy'
+    file_name = '_epochs_5_episodes_100_fuzzy'
     model_name = './prediction_model/'
-    learn(network='mlp',
-          env=env,
-          data_path=data_path,
-          model_based=True,
-          memory_extend=False,
-          dyna_learning=True,
-          model_type='mlp',
-          noise_type='normal_0.2',
-          file_name=file_name,
-          model_path=model_path,
-          model_name=model_name,
-          restore=False,
-          nb_epochs=5,
-          nb_sample_steps=50,
-          nb_samples_extend=10,
-          nb_model_learning=30,
-          nb_epoch_cycles=100,
-          nb_train_steps=60,
-          nb_rollout_steps=200)
 
-    """
-    Model-based gaussian model
-    Episode_Rewards:: [-6.559999999999991, -6.244999999999991, -5.824999999999993, -5.614999999999993, -5.824999999999993, -6.979999999999989, -7.609999999999987, -8.239999999999984, -8.344999999999985, -8.449999999999983, -8.449999999999983, -8.449999999999983, -8.554999999999984, -8.449999999999983, -8.449999999999983, -8.449999999999983, -8.239999999999984, -7.189999999999988, -5.7199999999999935, -5.5099999999999945, -5.5099999999999945, -5.404999999999994, -5.404999999999994, -5.5099999999999945, -5.404999999999994, -5.404999999999994, -5.404999999999994, -5.404999999999994, -5.404999999999994, -5.404999999999994, -5.404999999999994, -5.404999999999994, -5.404999999999994, -5.404999999999994, -5.5099999999999945, -5.5099999999999945, -5.5099999999999945, -5.5099999999999945, -5.5099999999999945, -5.404999999999994, -5.404999999999994, -5.5099999999999945, -5.5099999999999945, -5.5099999999999945, -5.5099999999999945, -5.5099999999999945]
-    Episode_Times:: [27.767322540283203, 29.839134454727173, 28.626702785491943, 28.169037342071533, 28.601523399353027, 31.77764320373535, 33.55309987068176, 35.18787622451782, 35.532920598983765, 35.774473667144775, 35.79237246513367, 35.7697548866272, 36.09323000907898, 35.901691198349, 35.81383466720581, 35.72635340690613, 35.08375811576843, 32.345478534698486, 28.381656646728516, 27.768736124038696, 27.707700490951538, 27.490614652633667, 27.4447762966156, 27.67473077774048, 27.48730778694153, 27.45588207244873, 27.37090492248535, 27.31996488571167, 30.307120323181152, 27.780642986297607, 27.495296955108643, 237.87087750434875, 225.64937281608582, 317.86939120292664, 375.10274052619934, 354.0145788192749, 338.8398802280426, 278.26734805107117, 278.65738344192505, 296.736270904541, 312.2680208683014, 441.1866557598114, 343.715788602829, 647.8456799983978, 371.28341841697693, 406.30851197242737]
-    Episode_Rewards:: [-6.76999999999999, -6.559999999999991, -6.139999999999992, -5.824999999999993, -6.034999999999992, -6.979999999999989, -7.819999999999986, -8.029999999999985, -7.924999999999986, -7.924999999999986, -7.819999999999986, -7.609999999999987, -7.189999999999988, -7.7149999999999865, -8.449999999999983, -8.554999999999984, -8.764999999999983, -8.869999999999983, -8.869999999999983, -8.764999999999983, -8.869999999999983, -8.869999999999983, -8.869999999999983, -8.869999999999983, -8.869999999999983, -8.869999999999983, -8.869999999999983, -8.974999999999982, -8.869999999999983, -8.764999999999983, -8.869999999999983, -8.869999999999983, -8.869999999999983, -8.869999999999983, -8.869999999999983, -8.764999999999983, -8.659999999999982, -8.659999999999982, -8.869999999999983, -8.869999999999983, -8.974999999999982, -8.869999999999983, -8.764999999999983, -8.764999999999983, -8.764999999999983, -8.869999999999983, -8.869999999999983, -8.869999999999983, -8.974999999999982, -8.869999999999983, -8.869999999999983, -8.974999999999982, -8.974999999999982, -8.974999999999982, -8.974999999999982, -8.974999999999982, -8.974999999999982, -8.974999999999982]
-    Episode_Times:: [26.994033813476562, 30.770112991333008, 29.46457576751709, 28.724473237991333, 29.20805025100708, 31.792637825012207, 34.08474898338318, 34.591211795806885, 34.31247019767761, 34.40872144699097, 34.07383894920349, 33.48011112213135, 32.39230966567993, 33.83802938461304, 35.78772282600403, 35.97193002700806, 36.62266278266907, 36.860942125320435, 36.82782769203186, 36.52959322929382, 36.97553730010986, 36.84327554702759, 36.81550455093384, 36.933107137680054, 36.72500038146973, 36.80849766731262, 36.78366255760193, 37.31751322746277, 36.87189316749573, 36.66956615447998, 36.825047969818115, 319.5994963645935, 371.5126769542694, 390.478036403656, 473.81298327445984, 554.5190415382385, 423.5883288383484, 480.93056631088257, 456.9679927825928, 608.2720158100128, 519.0065865516663, 517.6432852745056, 678.5634579658508, 1131.3627626895905, 830.992062330246, 671.4969174861908, 740.5868232250214, 816.2626433372498, 1049.6738183498383, 1089.3690526485443, 963.5303378105164, 1123.8543672561646, 1213.2957389354706, 1147.394606590271, 1162.4059371948242, 1003.5584232807159, 1636.1836168766022, 1327.16890001297]
-    """
+    train(
+        network='mlp',
+        env=env,
+        data_path=data_path,
+        model_based=True,
+        memory_extend=True,
+        dyna_learning=False,
+        model_type='gp',
+        noise_type='normal_0.2',
+        algorithm_name=algorithm_name,
+        file_name=file_name,
+        model_path=model_path,
+        model_name=model_name,
+        restore=False,
+        nb_horizon=2,
+        nb_epochs=5,
+        nb_sample_steps=50,
+        nb_samples_extend=10,
+        nb_model_learning=3,
+        nb_epoch_cycles=100,
+        nb_train_steps=60,
+        nb_rollout_steps=200)
+
+
+
+

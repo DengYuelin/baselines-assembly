@@ -28,7 +28,7 @@ pol_samples = [None for _ in range(3)]
 pol_samples[0] = 100
 print(pol_samples)
 a = np.array([[1., 2, 3], [4, 3, 1]])
-print(np.amax(a, axis=0))
+print(a.copy())
 
 # a = np.zeros((4, 2), dtype=np.float32)
 # b = np.array([1., 2.])

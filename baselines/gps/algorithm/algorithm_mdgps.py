@@ -77,7 +77,6 @@ class AlgorithmMDGPS(Algorithm):
         dU, dO, T = self.dU, self.dO, self.T
 
         # Compute target mean, cov, and weight for each sample.
-
         obs_data, tgt_mu = np.zeros((0, T, dO)), np.zeros((0, T, dU))
         tgt_prc, tgt_wt = np.zeros((0, T, dU, dU)), np.zeros((0, T))
         for m in range(self.M):
@@ -97,6 +96,7 @@ class AlgorithmMDGPS(Algorithm):
                 for i in range(N):
                     mu[i, t, :] = (traj.K[t, :, :].dot(X[i, t, :]) + traj.k[t, :])
                 wt[:, t].fill(pol_info.pol_wt[t])
+
             tgt_mu = np.concatenate((tgt_mu, mu))
             tgt_prc = np.concatenate((tgt_prc, prc))
             tgt_wt = np.concatenate((tgt_wt, wt))

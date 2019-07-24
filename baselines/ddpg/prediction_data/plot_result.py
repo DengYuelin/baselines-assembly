@@ -520,7 +520,7 @@ if __name__ == "__main__":
     # plot(result_reward_paths, file_name='./figures/episode_reward_ddpg.pdf')
     # plot_comparision_hist(result_times_paths, file_name='./figures/episode_assembly_time_ddpg.pdf')
 
-    rewards = np.load('train_step_ddpg_normal_0.2_episodes_100_fuzzy.npy')
+    rewards = np.load('episodes_reward.npy')
     print(rewards)
 
     """ option data """

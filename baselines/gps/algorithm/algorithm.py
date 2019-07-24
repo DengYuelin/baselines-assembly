@@ -92,12 +92,12 @@ class Algorithm(object):
             U = cur_data.get_U()
 
             """ normalization obs"""
-            N, T, dx = X.shape
-            X_new = X.reshape(N*T, dx)
-            max_X = np.amax(X_new, axis=0)
-            min_X = np.amin(X_new, axis=0)
-            X_new = (X_new - min_X)/(max_X - min_X)
-            X = copy.copy(X_new.reshape((N, T, dx)))
+            # N, T, dx = X.shape
+            # X_new = X.reshape(N*T, dx)
+            # max_X = np.amax(X_new, axis=0)
+            # min_X = np.amin(X_new, axis=0)
+            # X_new = (X_new - min_X)/(max_X - min_X)
+            # X = copy.copy(X_new.reshape((N, T, dx)))
 
             self.cur[m].traj_info.dynamics.update_prior(X, U)
             self.cur[m].traj_info.dynamics.fit(X, U)
