@@ -28,6 +28,48 @@ from baselines import logger
 import numpy as np
 import copy as cp
 
+algorithm = {
+    'iterations': 10,
+    'lg_step_schedule': np.array([1e-4, 1e-3, 1e-2, 1e-1]),
+    'policy_dual_rate': 0.1,
+    'ent_reg_schedule': np.array([1e-3, 1e-3, 1e-2, 1e-1]),
+    'fixed_lg_step': 3,
+    'kl_step': 5.0,
+    'init_pol_wt': 0.01,
+    'min_step_mult': 0.01,
+    'max_step_mult': 1.0,
+    'sample_decrease_var': 0.05,
+    'sample_increase_var': 0.1,
+    'exp_step_increase': 2.0,
+    'exp_step_decrease': 0.5,
+    'exp_step_upper': 0.5,
+    'exp_step_lower': 1.0,
+    'max_policy_samples': 6,
+    'policy_sample_mode': 'add',
+}
+
+algorithm['dynamics'] = {
+        'type': DynamicsLRPrior,
+        'regularization': 1e-6,
+        'prior': {
+            'type': DynamicsPriorGMM,
+            'max_clusters': 20,
+            'min_samples_per_cluster': 40,
+            'max_samples': 20,
+        },
+    }
+
+algorithm_lr = {
+        'type': DynamicsLR,
+        'regularization': 1e-6,
+        # 'prior': {
+        #     'type': DynamicsPriorGMM,
+        #     'max_clusters': 20,
+        #     'min_samples_per_cluster': 40,
+        #     'max_samples': 20,
+        # },
+    }
+
 def tarin(network,
           env,
           data_path='',
@@ -63,6 +105,51 @@ def tarin(network,
           tau=0.01,
           param_noise_adaption_interval=50,
           **network_kwargs):
+
+    def predict(Fm, fv, x_t, u_t, t):
+
+        return Fm[t, :, :].dot(np.concatenate((x_t, u_t))) + fv[t, :]
+
+    def dynamic_learning():
+
+        """ load and process data """
+        states = np.load('./train_states_noisy_ddpg_normal_0.2_epochs_5_episodes_100_none_fuzzy.npy')
+
+        obs = np.zeros((100, 40, 12), dtype=np.float32)
+        next_obs = np.zeros((100, 40, 12), dtype=np.float32)
+        action = np.zeros((100, 40, 6), dtype=np.float32)
+        for i in range(100):
+            for j in range(40):
+                obs[i, j, :] = states[0][i][j][0]
+                action[i, j, :] = states[0][i][j][1]
+                next_obs[i, j, :] = states[0][i][j][3]
+
+        nn_obs = obs.reshape((4000, 12))
+        nn_action = action.reshape((4000, 6))
+        nn_next_obs = next_obs.reshape((4000, 12))
+
+        """ normalize the sample data """
+        vec_max = np.zeros(12)
+        vec_min = np.zeros(12)
+        for i in range(12):
+            vec_max[i] = max(nn_obs[:, i])
+            vec_min[i] = min(nn_obs[:, i])
+        print('max', vec_max)
+        print('min', vec_min)
+        nn_obs = (nn_obs - vec_min) / (vec_max - vec_min)
+        nn_next_obs = (nn_next_obs - vec_min) / (vec_max - vec_min)
+
+        obs = nn_obs.reshape((100, 40, 12))
+        next_obs = nn_next_obs.reshape((100, 40, 12))
+
+        """ gaussian model """
+        gmm_dynamic = DynamicsLRPrior(algorithm['dynamics'])
+
+        gmm_dynamic.update_prior(obs[:100, :, :], action[:100, :, :])
+        Fm_0, fv_0, dyn_covar_0 = gmm_dynamic.fit(obs[:100, :, :], action[:100, :, :])
+
+        return
+
 
     for epoch in range(nb_epoch_cycles):
         for index_step in range(nb_rollout_steps):

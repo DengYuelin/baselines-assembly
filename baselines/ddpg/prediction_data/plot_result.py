@@ -517,8 +517,11 @@ if __name__ == "__main__":
                            'path_2': 'train_times_ddpg_normal_0.2_episodes_100_fuzzy.npy',
                            'path_3': 'train_times_dyna_ddpg_normal_0.2_episodes_100_none_fuzzy.npy'}
 
-    plot(result_reward_paths, file_name='./figures/episode_reward_ddpg.pdf')
-    plot_comparision_hist(result_times_paths, file_name='./figures/episode_assembly_time_ddpg.pdf')
+    # plot(result_reward_paths, file_name='./figures/episode_reward_ddpg.pdf')
+    # plot_comparision_hist(result_times_paths, file_name='./figures/episode_assembly_time_ddpg.pdf')
+
+    rewards = np.load('train_step_ddpg_normal_0.2_episodes_100_fuzzy.npy')
+    print(rewards)
 
     """ option data """
     # plot('./fifth_data/train_reward_option_normal_0.2_episodes_150.npy',

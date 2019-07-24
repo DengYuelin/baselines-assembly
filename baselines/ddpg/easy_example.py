@@ -24,7 +24,13 @@ a[11] = 1
 print(a[-5:])
 print(a.shape)
 
-a = np.zeros((4, 2), dtype=np.float32)
-b = np.array([1., 2.])
-c = np.array([2, 2])
-print((a + b)/c)
+pol_samples = [None for _ in range(3)]
+pol_samples[0] = 100
+print(pol_samples)
+a = np.array([[1., 2, 3], [4, 3, 1]])
+print(np.amax(a, axis=0))
+
+# a = np.zeros((4, 2), dtype=np.float32)
+# b = np.array([1., 2.])
+# c = np.array([2, 2])
+# print((a + b)/c)
